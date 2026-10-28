@@ -12,6 +12,16 @@ Ordered implementation plan for the Tech Challenge 4 project. Design decisions l
   champion model. The AWS run is a real rerun, not pasted numbers; it should reproduce the
   local run (same seeds), and the local run is the reference to diff against. Never tune
   thresholds or code on AWS: fix locally, then rerun.
+- **Work from any machine.** The repo owner works from more than one computer. Git carries the
+  code and the DVC pointer files; the **DVC remote on S3** carries the data (`dvc pull`).
+  MLflow state (experiments, registry) lives in a local Docker volume and is **not** shared:
+  training is re-run on whichever machine needs it. So everything needed to rerun must be in
+  git: seeded code, `uv.lock`, Compose files, config, and a README section "Reproducing from
+  scratch" (clone -> `uv sync` -> configure AWS credentials -> `dvc pull` -> `docker compose up`
+  -> run the training DAG). Keep that section current as steps land, and verify it works on a
+  clean checkout before step 15.
+- S3 was pulled forward from step 18 (approved): it exists from step 2b on as the shared DVC
+  remote, private and encrypted, same bucket later reused for MLflow artifacts.
 
 ## Phase 1 - Foundation and data
 
@@ -29,6 +39,17 @@ Ordered implementation plan for the Tech Challenge 4 project. Design decisions l
       then the `kaggle` CLI or manual download) into `data/raw/`. Claude cannot do this for you.
 - [x] **Claude:** DVC-track the raw file (local remote), write a download/README note.
 - **Why:** it blocks the EDA, the pool split and the model work.
+
+### 2b. Shared DVC remote on S3 (pulled forward)
+- [ ] **You:** install the AWS CLI; in the AWS console create a Budget alert, an IAM user
+      (not root) with S3 access limited to the project bucket, and an access key; run
+      `aws configure` yourself (credentials never go in the repo or the chat). On the home
+      computer, repeat `aws configure` only.
+- [ ] **Claude:** bucket creation commands (private, block public access, default encryption,
+      region chosen with you), add the S3 remote to `.dvc/config` (bucket name only, no
+      secrets), `dvc push`, then the "Reproducing from scratch" README section.
+- **Why:** lets you `dvc pull` the same data on any machine, and is the bucket MLflow
+  artifacts reuse in step 18.
 
 ### 3. EDA notebook `01_eda`
 - [ ] **Claude:** class balance, missingness mechanism (MCAR/MAR/MNAR), ranges, duplicates,
