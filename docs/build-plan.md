@@ -16,9 +16,9 @@ Ordered implementation plan for the Tech Challenge 4 project. Design decisions l
 ## Phase 1 - Foundation and data
 
 ### 1. Repo skeleton [R]
-- [ ] **You:** install Docker Desktop and Python 3.11+ (git is already set up; the repo is
+- [x] **You:** install Docker Desktop and Python 3.11+ (git is already set up; the repo is
       `JoaoFurlan/tech-challenge-04`, `origin` already points to it).
-- [ ] **Claude:** folders (`src/`, `notebooks/`, `dags/`, `config/`, `docker/`, `tests/`),
+- [x] **Claude:** folders (`src/`, `notebooks/`, `dags/`, `config/`, `docker/`, `tests/`),
       Python environment and lockfile, base Docker Compose, DVC init, `.gitignore`.
 - **Why:** everything hangs off it, and the rubric grades the semantic commit history. All
   code lands in `src/`; notebooks and DAGs import from it.
