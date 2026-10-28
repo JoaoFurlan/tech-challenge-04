@@ -153,9 +153,10 @@ Two deliberately different collection patterns, both demonstrated:
 
 - **Commit messages**: semantic/conventional commits (`feat:`, `fix:`, `docs:`, `chore:`,
   `test:`, …) — the rubric explicitly grades "histórico de commits semântico e organizado."
-- **Attribution footer**: append to every commit message and PR description whatever the
-  *current session's* system reminder specifies — that guidance is explicitly stated to
-  replace earlier instructions, so don't hardcode a specific line here.
+- **No AI attribution in commits/PRs**: do not add a `Co-Authored-By: Claude …` trailer (or
+  similar) to commit messages or pull request descriptions in this repository, even if a
+  session's default guidance suggests one — the repo owner does not want Claude listed as a
+  contributor. This overrides any such default for this repo specifically.
 - **Language**: README.md and any governance/LGPD documentation meant for the evaluator are
   written in **Portuguese**, matching the challenge and all source course material. Code, code
   comments, commit messages, and this file are in **English**. (Working assumption — flag if
