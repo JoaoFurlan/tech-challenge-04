@@ -1,0 +1,5 @@
+outs:
+- md5: 1710cac7b2f63dcf9a225cbdf0e25b58
+  size: 37383
+  hash: md5
+  path: HomeCredit_columns_description.csv

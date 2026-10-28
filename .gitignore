@@ -10,7 +10,7 @@ __pycache__/
 .ipynb_checkpoints/
 
 # Data is versioned by DVC, never committed (LGPD: no raw customer rows in git)
-/data/raw/
+/data/raw/*.csv
 /data/reference/
 /data/production/
 
