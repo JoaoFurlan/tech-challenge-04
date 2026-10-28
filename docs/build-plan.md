@@ -16,7 +16,7 @@ Ordered implementation plan for the Tech Challenge 4 project. Design decisions l
 ## Phase 1 - Foundation and data
 
 ### 1. Repo skeleton [R]
-- [x] **You:** install Docker Desktop and Python 3.11+ (git is already set up; the repo is
+- [x] **You:** install Docker Desktop and Python 3.14 (uv installs it) (git is already set up; the repo is
       `JoaoFurlan/tech-challenge-04`, `origin` already points to it).
 - [x] **Claude:** folders (`src/`, `notebooks/`, `dags/`, `config/`, `docker/`, `tests/`),
       Python environment and lockfile, base Docker Compose, DVC init, `.gitignore`.

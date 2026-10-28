@@ -1,6 +1,6 @@
 # Serving image: multi-stage so uv, its cache and build layers never reach the final image.
-# python:3.12-slim (Debian) rather than alpine: musl breaks many scientific wheels.
-FROM python:3.12-slim AS build
+# python:3.14-slim (Debian) rather than alpine: musl breaks many scientific wheels.
+FROM python:3.14-slim AS build
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 WORKDIR /app
@@ -10,7 +10,7 @@ COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
 RUN uv sync --frozen --no-dev --no-default-groups --group serving --no-editable
 
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 WORKDIR /app
 COPY --from=build /app/.venv /app/.venv
