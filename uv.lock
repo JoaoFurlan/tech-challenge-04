@@ -674,6 +674,7 @@ dev = [
     { name = "dvc", extra = ["s3"] },
     { name = "ipykernel" },
     { name = "jupyterlab" },
+    { name = "matplotlib" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -713,6 +714,7 @@ dev = [
     { name = "dvc", extras = ["s3"] },
     { name = "ipykernel" },
     { name = "jupyterlab" },
+    { name = "matplotlib" },
     { name = "pytest" },
     { name = "ruff" },
 ]

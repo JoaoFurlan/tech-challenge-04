@@ -51,13 +51,19 @@ Ordered implementation plan for the Tech Challenge 4 project. Design decisions l
 - **Why:** lets you `dvc pull` the same data on any machine, and is the bucket MLflow
   artifacts reuse in step 18.
 
-### 3. EDA notebook `01_eda`
-- [ ] **Claude:** class balance, missingness mechanism (MCAR/MAR/MNAR), ranges, duplicates,
-      correlations, leakage checks. Output: documented decisions.
-- [ ] **You:** review the decisions (contract rules, which 2+ variables to drift, which
-      slices to monitor) before they are frozen.
-- **Why:** justifies the contract rules, imputation, feature variants, drifted variables and
-  slices. Feeds steps 5, 7 and 9.
+### 3. First exploration `01_eda`
+- [x] **Claude:** observation-only notebook: structure, target, missingness and its causes,
+      anomalies, duplicates, relationships with the target, leakage check. Ends with facts and
+      open questions, no decisions.
+- [ ] **You:** read it (`docs/reports/01_eda.html`) and say what surprised you or what to look at next.
+- **Why:** understand the data before committing to anything. Decisions come after, from evidence.
+
+### 3b. Decisions from the exploration
+- [ ] **You + Claude:** decide, one by one and pointing back to an observation: which
+      validation rules, how to treat nulls/sentinels/outliers, feature variants, which
+      variables to drift, which slices to monitor. Record them in `docs/decisions.md`.
+- **Why:** feeds steps 5, 6, 9 and 13. Drift-sensitivity checks and slice-size checks are
+  done later, when the drift simulator is designed (step 9), not in the exploration.
 
 ### 4. Split Reference and Production pools [R]
 - [ ] **Claude:** seeded, disjoint split; Reference (training) and Production pool; DVC-tracked.

@@ -12,7 +12,7 @@ dependencies = [
 
 # Heavier stacks live in groups so each container installs only what it needs.
 [dependency-groups]
-dev = ["pytest", "ruff", "dvc[s3]", "jupyterlab", "ipykernel"]
+dev = ["pytest", "ruff", "dvc[s3]", "matplotlib", "jupyterlab", "ipykernel"]
 training = ["pyarrow", "mlflow", "optuna", "xgboost", "lightgbm"]
 validation = ["pandera", "great-expectations"]
 monitoring = ["pyarrow", "evidently", "prometheus-client", "requests"]
