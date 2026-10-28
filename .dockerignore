@@ -1,0 +1,7 @@
+.venv
+.git
+data
+mlruns
+notebooks
+docs
+__pycache__

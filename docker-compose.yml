@@ -1,0 +1,23 @@
+# Base stack. Services are added step by step (see docs/build-plan.md):
+# step 6 mlflow+postgres, step 8 airflow, step 11 serving, step 13 prometheus/pushgateway/grafana.
+# Host ports avoid 80/8000, which other local projects may use.
+name: credit-drift
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mlops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mlops}
+      POSTGRES_DB: ${POSTGRES_DB:-mlflow}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mlops}"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  pgdata:
