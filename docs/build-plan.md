@@ -41,11 +41,11 @@ Ordered implementation plan for the Tech Challenge 4 project. Design decisions l
 - **Why:** it blocks the EDA, the pool split and the model work.
 
 ### 2b. Shared DVC remote on S3 (pulled forward)
-- [ ] **You:** install the AWS CLI; in the AWS console create a Budget alert, an IAM user
+- [x] **You:** install the AWS CLI; in the AWS console create a Budget alert, an IAM user
       (not root) with S3 access limited to the project bucket, and an access key; run
       `aws configure` yourself (credentials never go in the repo or the chat). On the home
       computer, repeat `aws configure` only.
-- [ ] **Claude:** bucket creation commands (private, block public access, default encryption,
+- [x] **Claude:** bucket creation commands (private, block public access, default encryption,
       region chosen with you), add the S3 remote to `.dvc/config` (bucket name only, no
       secrets), `dvc push`, then the "Reproducing from scratch" README section.
 - **Why:** lets you `dvc pull` the same data on any machine, and is the bucket MLflow

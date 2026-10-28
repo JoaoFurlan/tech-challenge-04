@@ -1,0 +1,5 @@
+[core]
+    remote = s3store
+['remote "s3store"']
+    url = s3://driftsys/dvc-store
+    region = us-east-1
