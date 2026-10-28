@@ -24,10 +24,10 @@ Ordered implementation plan for the Tech Challenge 4 project. Design decisions l
   code lands in `src/`; notebooks and DAGs import from it.
 
 ### 2. Pick the dataset and download it [R]
-- [ ] **You:** confirm Home Credit Default Risk (or choose another) - open item.
-- [ ] **You:** download `application_train.csv` (Kaggle account, accept the competition rules,
+- [x] **You:** confirm Home Credit Default Risk (or choose another) - open item.
+- [x] **You:** download `application_train.csv` (Kaggle account, accept the competition rules,
       then the `kaggle` CLI or manual download) into `data/raw/`. Claude cannot do this for you.
-- [ ] **Claude:** DVC-track the raw file (local remote), write a download/README note.
+- [x] **Claude:** DVC-track the raw file (local remote), write a download/README note.
 - **Why:** it blocks the EDA, the pool split and the model work.
 
 ### 3. EDA notebook `01_eda`
