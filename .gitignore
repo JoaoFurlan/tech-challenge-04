@@ -1,2 +1,20 @@
 # PDFs under docs/ (course material, not meant to be versioned)
 docs/**/*.pdf
+
+# Python / tooling
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Data is versioned by DVC, never committed (LGPD: no raw customer rows in git)
+/data/raw/
+/data/reference/
+/data/production/
+
+# Local secrets and runtime state
+.env
+mlruns/
+mlartifacts/
