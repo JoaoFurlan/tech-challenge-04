@@ -126,12 +126,12 @@ adding a week never changes earlier ones, and `drift_spec.json` stays a simple t
 
 ## 8. Model selection and tuning (step 6, approved)
 
-- **Families:** logistic regression, LightGBM, XGBoost (3 variants x 3 families = 9 cells). Deep
+- **Families:** logistic regression, LightGBM, XGBoost (compared in stages, see the amendment below). Deep
   learning is out: on tabular data of this size boosted trees match or beat it and are easier to
   explain (LGPD art. 20, to be checked in the README). Random forest dropped; CatBoost is an
   optional fourth family if time allows.
-- **Selection rule:** (1) rank the 9 tuned cells by cross-validated AUC-PR; (2) shortlist every
-  cell within 1 standard error of the best; (3) pick the shortlist cell with the lowest expected
+- **Selection rule** (applied at every stage): (1) rank the candidates by cross-validated AUC-PR;
+  (2) shortlist every candidate within 1 standard error of the best; (3) pick the shortlisted candidate with the lowest expected
   cost, `min_t [C_FN*pi*(1-TPR(t)) + C_FP*(1-pi)*FPR(t)]` on out-of-fold predictions;
   (4) Brier is a sanity gate, not a ranking term: the calibrated champion must beat the
   constant-prior predictor (pi*(1-pi) = 0.074).
@@ -145,9 +145,34 @@ adding a week never changes earlier ones, and `drift_spec.json` stays a simple t
   - XGBoost: learning rate (log 0.01-0.2), depth 3-8, min child weight (log 1-50), subsample 0.5-1,
     column sample 0.5-1, lambda (log 0.01-20), gamma 0-5; `hist`; up to 1,000 trees; 25 trials.
 - No class weights anywhere: they distort the probabilities that calibration and Brier rely on.
-- **MLflow:** one parent run per cell, one nested run per trial, dataset hash logged on every
-  run, only the champion registered. Trials log params and metrics explicitly instead of
+- **MLflow:** see the amendment below. Runs log params and metrics explicitly instead of
   `autolog()`, which would store hundreds of per-fold model artifacts.
 - **Implementation note:** preprocessing does not depend on hyperparameters, so it is fitted
   once per fold and cached; each trial only fits the estimator. Variant C's feature selection is
   part of that per-fold preprocessing, so it never sees validation rows.
+
+### Amendment: staged experiments (requested by the repo owner, supersedes the 9-cell grid)
+
+Instead of tuning all 3 variants x 3 families, the work runs as three MLflow experiments, each
+feeding the next, so every stage is a table that can be sorted and filtered and the best result
+moves on:
+
+1. **`feature_engineering`:** variants A, B, C, each with a linear (logistic regression) and a tree
+   (LightGBM) probe at fixed default settings. The best run (selection rule) decides the variant.
+2. **`model_selection`:** the three families on that variant, default settings. Every family within
+   1 standard error of the best moves to tuning (so statistically tied families are both tuned).
+3. **`hyperparameter_tuning`:** Optuna per shortlisted family, one flat run per trial plus one
+   summary run for the refit.
+4. **`champion`:** rank the tuned families by the same rule, calibrate on the calibration part,
+   evaluate on test once, register `credit_scoring@champion`.
+
+Every run carries the params `model`, `feature_variant` and `trial` (0 outside tuning), the tag
+`stage`, the dataset hash, and the same metrics (`cv_auc_pr_mean`, `cv_auc_pr_se`, `oof_brier`,
+`oof_cost_3/5/10`, ...). Run names are readable (`B / lightgbm`, `lightgbm trial 07`).
+
+Trade-off, stated plainly: a staged search is greedy (it assumes the best variant at default
+settings stays best after tuning), and it is far cheaper than the grid. Carrying every
+within-1-SE candidate forward limits that risk.
+
+Cloud: only the champion's run, its metrics and the registered model go to the AWS MLflow, plus a
+summary table of the stages; the full trial history stays local (screenshots/exports for the README).

@@ -1,13 +1,13 @@
-"""Optuna search inside one (feature variant x model family) cell, logged to MLflow.
+"""Cross-validated evaluation and Optuna tuning, shared by the three experiment stages.
 
 Preprocessing does not depend on hyperparameters, so it is fitted once per CV fold and cached;
-each trial only fits the estimator. Folds are identical across cells (fair comparison).
+each evaluation only fits the estimator. Folds are identical everywhere (fair comparison).
 """
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import lightgbm as lgb
-import mlflow
 import numpy as np
 import optuna
 import pandas as pd
@@ -27,6 +27,15 @@ N_FOLDS = 3
 SEED = 42
 MAX_TREES = 1000
 EARLY_STOP = 50
+
+# Reasonable fixed settings for the stages that compare features and models (no tuning yet).
+DEFAULT_PARAMS = {
+    "logreg": {"C": 1.0},
+    "lightgbm": {"learning_rate": 0.05, "num_leaves": 31, "min_child_samples": 20, "colsample_bytree": 0.8,
+                 "subsample": 0.8, "reg_alpha": 0.0, "reg_lambda": 0.0},
+    "xgboost": {"learning_rate": 0.05, "max_depth": 6, "min_child_weight": 1.0, "subsample": 0.8,
+                "colsample_bytree": 0.8, "reg_lambda": 1.0, "gamma": 0.0},
+}
 
 
 @dataclass
@@ -92,78 +101,86 @@ def fit_predict(family: str, params: dict, fold: Fold) -> tuple[np.ndarray, int 
     return est.predict_proba(fold.X_valid)[:, 1], int(best)
 
 
-def prepare_folds(X: pd.DataFrame, y: np.ndarray, variant: str, family: str, seed: int = SEED) -> list[Fold]:
-    folds = []
-    splitter = StratifiedKFold(N_FOLDS, shuffle=True, random_state=seed)
-    for train_idx, valid_idx in splitter.split(X, y):
-        prep = build_preprocessor(variant, family, seed)
-        X_train = prep.fit_transform(X.iloc[train_idx], y[train_idx])
-        folds.append(Fold(X_train, y[train_idx], prep.transform(X.iloc[valid_idx]), y[valid_idx], valid_idx))
-    return folds
+class FoldCache:
+    """Per-fold preprocessing fitted once per (variant, preprocessing kind) and reused by every run."""
+
+    def __init__(self, X: pd.DataFrame, y: np.ndarray, seed: int = SEED):
+        self.X, self.y, self.seed = X, y, seed
+        self._folds: dict[tuple[str, str], list[Fold]] = {}
+
+    def get(self, variant: str, family: str) -> list[Fold]:
+        kind = "logreg" if family == "logreg" else "tree"  # the two preprocessing flavours (see features.py)
+        if (variant, kind) not in self._folds:
+            folds = []
+            for tr, va in StratifiedKFold(N_FOLDS, shuffle=True, random_state=self.seed).split(self.X, self.y):
+                prep = build_preprocessor(variant, family, self.seed)
+                X_train = prep.fit_transform(self.X.iloc[tr], self.y[tr])
+                folds.append(Fold(X_train, self.y[tr], prep.transform(self.X.iloc[va]), self.y[va], va))
+            self._folds[(variant, kind)] = folds
+        return self._folds[(variant, kind)]
 
 
-def tune_cell(X: pd.DataFrame, y: np.ndarray, variant: str, family: str, n_trials: int | None = None,
-              seed: int = SEED) -> tuple[dict, Pipeline]:
-    """Run the study, then recompute out-of-fold predictions for the best trial and refit on all of X.
-
-    Must be called inside an active MLflow parent run; each trial is logged as a nested run.
-    """
+def cv_evaluate(folds: list[Fold], y: np.ndarray, family: str, params: dict,
+                on_fold: Callable[[int, float], None] | None = None) -> dict:
+    """Cross-validated AUC-PR (mean and standard error) plus pooled out-of-fold metrics."""
     started = time.time()
-    n_trials = n_trials or TRIALS[family]
-    folds = prepare_folds(X, y, variant, family, seed)
-
-    def objective(trial: optuna.Trial) -> float:
-        params = suggest(trial, family)
-        scores, iters = [], []
-        with mlflow.start_run(run_name=f"trial_{trial.number:02d}", nested=True):
-            mlflow.log_params(params)
-            for step, fold in enumerate(folds):
-                proba, best = fit_predict(family, params, fold)
-                scores.append(average_precision_score(fold.y_valid, proba))
-                iters.append(best)
-                trial.report(float(np.mean(scores)), step)
-                if trial.should_prune():
-                    mlflow.set_tag("pruned", "true")
-                    mlflow.log_metric("cv_auc_pr_partial", float(np.mean(scores)))
-                    raise optuna.TrialPruned()
-            mean = float(np.mean(scores))
-            mlflow.log_metrics({"cv_auc_pr": mean, **{f"fold_{i}_auc_pr": s for i, s in enumerate(scores)}})
-        trial.set_user_attr("iters", iters)
-        trial.set_user_attr("fold_scores", scores)
-        return mean
-
-    study = optuna.create_study(
-        direction="maximize", sampler=optuna.samplers.TPESampler(seed=seed),
-        pruner=optuna.pruners.MedianPruner(n_startup_trials=6, n_warmup_steps=0))
-    optuna.logging.set_verbosity(optuna.logging.WARNING)
-    study.optimize(objective, n_trials=n_trials)
-
-    best = study.best_trial
-    params = best.params
     oof = np.zeros(len(y))
-    fold_scores, iters = [], []
-    for fold in folds:
-        proba, it = fit_predict(family, params, fold)
+    scores, iters = [], []
+    for step, fold in enumerate(folds):
+        proba, best = fit_predict(family, params, fold)
         oof[fold.valid_index] = proba
-        fold_scores.append(average_precision_score(fold.y_valid, proba))
-        iters.append(it)
-    mean_iter = int(np.mean(iters) * 1.1) if iters[0] else None  # a bit more data in the final fit
-
-    prep = build_preprocessor(variant, family, seed)
-    X_full = prep.fit_transform(X, y)
-    estimator = make_estimator(family, params, n_estimators=mean_iter, seed=seed).fit(X_full, y)
-    pipeline = Pipeline([("prep", prep), ("model", estimator)])
-
-    result = {
-        "variant": variant, "family": family, "params": params, "n_trials": n_trials,
-        "n_pruned": sum(t.state == optuna.trial.TrialState.PRUNED for t in study.trials),
-        "cv_auc_pr_mean": float(np.mean(fold_scores)),
-        "cv_auc_pr_se": float(np.std(fold_scores, ddof=1) / np.sqrt(len(fold_scores))),
-        "n_estimators": mean_iter, "n_features": int(X_full.shape[1]),
+        scores.append(float(average_precision_score(fold.y_valid, proba)))
+        iters.append(best)
+        if on_fold:
+            on_fold(step, float(np.mean(scores)))
+    return {
+        "family": family, "params": params,
+        "cv_auc_pr_mean": float(np.mean(scores)),
+        "cv_auc_pr_se": float(np.std(scores, ddof=1) / np.sqrt(len(scores))),
+        "fold_auc_pr": scores,
+        "n_estimators": int(np.mean(iters) * 1.1) if iters[0] else None,  # a bit more data in the final fit
         **{f"oof_{k}": v for k, v in summarize(y, oof).items()},
         "seconds": round(time.time() - started, 1),
     }
-    return result, pipeline
+
+
+def tune_family(cache: FoldCache, variant: str, family: str, n_trials: int,
+                on_trial: Callable[[int, dict, float | None, bool], None] | None = None,
+                seed: int = SEED) -> dict:
+    """Optuna study for one family on one variant. `on_trial(number, params, cv_auc_pr, pruned)` logs each trial."""
+    folds = cache.get(variant, family)
+
+    def objective(trial: optuna.Trial) -> float:
+        params = suggest(trial, family)
+
+        def report(step: int, running_mean: float) -> None:
+            trial.report(running_mean, step)
+            if trial.should_prune():
+                if on_trial:
+                    on_trial(trial.number, params, running_mean, True)
+                raise optuna.TrialPruned()
+
+        result = cv_evaluate(folds, cache.y, family, params, on_fold=report)
+        if on_trial:
+            on_trial(trial.number, params, result["cv_auc_pr_mean"], False)
+        return result["cv_auc_pr_mean"]
+
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+    study = optuna.create_study(
+        direction="maximize", sampler=optuna.samplers.TPESampler(seed=seed),
+        pruner=optuna.pruners.MedianPruner(n_startup_trials=6, n_warmup_steps=0))
+    study.optimize(objective, n_trials=n_trials)
+    n_pruned = sum(t.state == optuna.trial.TrialState.PRUNED for t in study.trials)
+    return {"params": study.best_trial.params, "n_trials": n_trials, "n_pruned": n_pruned}
+
+
+def fit_final(X: pd.DataFrame, y: np.ndarray, variant: str, family: str, params: dict,
+              n_estimators: int | None, seed: int = SEED) -> tuple[Pipeline, int]:
+    """Refit preprocessing and estimator on all training rows; returns the pipeline and its feature count."""
+    prep = build_preprocessor(variant, family, seed)
+    matrix = prep.fit_transform(X, y)
+    estimator = make_estimator(family, params, n_estimators=n_estimators, seed=seed).fit(matrix, y)
+    return Pipeline([("prep", prep), ("model", estimator)]), int(matrix.shape[1])
 
 
 def split_xy(df: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray]:

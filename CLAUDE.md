@@ -38,16 +38,16 @@ not just satisfy the minimum.
 
 ### Model experimentation (Etapa 1, extended)
 - Model families: Logistic Regression (baseline), XGBoost, LightGBM, optionally Random Forest.
-- Feature engineering variants (outer loop, *not* searched): (A) raw/minimal, (B) engineered
-  (ratios, interaction terms, imputation chosen per the actual MCAR/MAR/MNAR mechanism
-  observed in the data), (C) feature-selected.
-- Hyperparameter tuning: **Optuna**, scoped *only* to tuning within a fixed
-  (feature variant × model family) combination — it does not choose the model family or the
-  feature variant, those are deliberate experimental conditions we control explicitly. Each
-  trial = one nested MLflow run via `autolog()`.
-- Selection criteria for the champion: AUC-PR (imbalance-aware), Brier score (calibration
-  matters directly for credit decisions), and a cost-weighted metric (the `C_FN`/`C_FP`/`π`
-  formulation from the Data Drift mitigation material).
+- **Staged MLflow experiments**, each feeding the next (details in `docs/decisions.md`, #8):
+  `feature_engineering` (variants A raw/minimal, B engineered, C selected, each with a linear and
+  a tree probe) → `model_selection` (logistic regression, LightGBM, XGBoost on the best variant)
+  → `hyperparameter_tuning` (**Optuna**, only on the shortlisted families; one flat run per
+  trial) → `champion`. Runs carry the params `model`, `feature_variant`, `trial` and the tag
+  `stage`, so they can be sorted and filtered. Runs log explicitly, not via `autolog()`.
+- Selection rule at every stage: rank by cross-validated AUC-PR, shortlist everything within one
+  standard error of the best, pick the lowest expected cost (`C_FN` = 5 × `C_FP`, the formula from
+  the Data Drift mitigation material). Brier is a sanity gate: the calibrated champion must beat
+  the constant-prior predictor.
 - Winner is registered in the **MLflow Model Registry** (alias `champion`) and is the only
   model used downstream (validation gates, scoring, serving).
 
