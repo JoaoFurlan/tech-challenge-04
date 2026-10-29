@@ -366,4 +366,6 @@ variant B + LightGBM, Platt-calibrated). The ordered
 implementation plan, with what Claude builds and what the repo owner must do, is in
 `docs/build-plan.md` (tick items off as they finish). Everything is proven locally first, then
 rerun on AWS with the same commit, data, frozen thresholds and champion; never tune on AWS.
-Next: step 8 (Airflow, needed by step 12) and the `production_monitoring` DAG (step 12).
+The stack (Postgres, MLflow, model server, later Airflow/Prometheus/Grafana) runs on the Linux box
+`pricing-server`, reached by SSH tunnel; the laptop is the workstation (see `docs/operations.md`; the repo was verified on
+a clean checkout there: 76 tests pass). Next: Airflow on the box (step 8) and the `production_monitoring` DAG (step 12).
