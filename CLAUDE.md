@@ -29,7 +29,8 @@ not just satisfy the minimum.
 - Candidate: Home Credit Default Risk (`application_train.csv`, ~307k rows) — flat table only,
   no joins to `bureau.csv` / `previous_application.csv` / etc. Feature engineering depth is
   kept intentionally modest so project effort stays on MLOps, not competition-grade feature
-  engineering. **Final dataset choice is still open — confirm before building Etapa 1.**
+  engineering. **Confirmed**: Home Credit, `application_train.csv` (first exploration in
+  `notebooks/01_eda.ipynb`; decisions that followed are in `docs/decisions.md`).
 - Split: a **Reference pool** (training) and a held-out, disjoint **Production pool**, further
   cut into ~13 synthetic "weeks" with progressively injected drift (see below). There is no
   real timestamp in the data — "time" here is entirely synthetic, by design (mirrors the
@@ -58,7 +59,12 @@ Both tools, different jobs — not redundant:
   as the audit-trail artifact for the Governance section and as one of the HTML
   reports/dashboards the repo deliverable requires.
 - At least 3 strict rules required by the rubric (age bounds, no nulls on income, no
-  duplicates, etc.) — implemented in both tools for the demo.
+  duplicates, etc.) — implemented in both tools for the demo. Two severities (see
+  `docs/decisions.md`): **blocking** rules reject the whole batch (schema/types, unique IDs, income
+  not null and > 0, age 18–100, valid `DAYS_EMPLOYED`, positive amounts); **warning** rules are
+  logged and alerted but the batch is still scored (income ≤ 10M with 99.9% tolerance — the training
+  data itself has 3 rows above it —, gender domain, per-column null rates, unseen categories).
+  Two contracts: the scoring batch (no `TARGET`) and the label contract applied when labels mature.
 - Demo of contract failure: one deliberately corrupted batch (nulls, negative ages, duplicate
   IDs) rejected by both tools.
 
@@ -72,7 +78,7 @@ disjoint Production pool, one episode per synthetic week:
 | Week(s) | Drift type | Mechanism |
 |---|---|---|
 | 1–2 | none (control) | sanity check — detectors must NOT fire |
-| 3–4 | gradual covariate shift | slow drift in income and employment duration (≥2 variables) |
+| 3–4 | gradual covariate shift | slow drift in income and employment duration (≥2 variables); weeks 4–5 also shift the category mix (e.g. income type) by resampling rows |
 | 5 | abrupt covariate shift | sudden shock to debt-to-income ratio |
 | 6–7 | new normal (covariate regime persists) | the week-5 regime stays in place; v2 (trained on labels through week 4 under a one-week label delay) has seen the income shift but not the week-5 payment shock, so it only partly covers this regime |
 | 8 | concept drift | invert/dampen a feature↔target relationship for a subset — a challenger has *not* seen this |
@@ -90,6 +96,10 @@ sensibly:
   employment duration × 0.85.
 - Week 5: `AMT_ANNUITY` × 1.15 on top of income × 0.86, so annuity ÷ income jumps. Weeks 6–7: the
   week-5 transform again on fresh rows.
+- Weeks 4–5 also: a small shift in the category mix (more "Working", fewer "Pensioner") by
+  resampling rows, so each row keeps its own label (pure covariate shift, exercises χ²/JS tests;
+  first thing to cut if time is short). The numeric transforms change values in place with labels
+  unchanged (measurement/level drift) — state this assumption in the README.
 - Week 8: features as in week 5. For a segment, labels are redrawn from a logistic model fit on
   the Reference with the `EXT_SOURCE_2` coefficient reversed and halved and the intercept
   adjusted to keep the overall default rate (so it is concept drift, not label shift). Weeks
@@ -111,8 +121,13 @@ sensibly:
   default rate) and subtle multivariate drift (reverse the correlation between two features,
   marginals untouched — needs MMD or a correlation check, since Evidently's preset alone
   won't catch it).
-- Whether drift accumulates week to week or is injected independently into fresh data is
-  **not decided yet** — settle it before writing the simulator.
+- **Level-based, not compounding**: each week has an absolute state of the world applied to fresh,
+  non-overlapping rows; gradual drift is a ramp of levels. Each week has its own seed (base +
+  week), so adding a week never changes earlier ones.
+- **Finding to state in the demo** (measured on a throwaway model in the exploration): covariate
+  drift moves PSI/KS and the mean predicted probability (8.05% → 8.42%) but barely moves AUC-PR
+  or Brier (< 0.002); concept drift does the opposite. The week-8 segment is chosen in step 9, is
+  not identical to any monitored slice, and is sized so overall AUC-PR falls ≈ 0.04.
 
 ### Retraining & recalibration (stretch phase)
 Built only after validation, drift detection and observability work end to end. Not graded by
@@ -135,9 +150,10 @@ the rubric; it supports the "lessons learned" part of the video.
   This is an **approved exception** to real-world-first: in prod the old model would be retired
   after promotion, but here v1 keeps scoring offline (loaded from the registry inside the
   monitoring DAG; the serving app stays champion-only) purely as the comparison baseline.
-- **Expected outcome of retrain #1 (a finding, not a failure)**: v2 helps partly in weeks 6–7 (it
-  saw the income shift but not the payment shock), barely helps in weeks 8–11 (concept drift it
-  never saw).
+- **Expected outcome of retrain #1 (a finding, not a failure)**: covariate drift barely moves
+  ranking, so v2 gives a calibration-level gain in weeks 6–7 at most (candidate A, recalibration,
+  should roughly match candidate B, a full retrain), and does not help in weeks 8–11 (concept
+  drift it never saw). Retraining is not always the answer; recalibration is the cheap fix.
 - **Retrain #2 for concept drift**: with a one-week label delay, labels through week 10 only
   become available after week 11 (week 8 labels are the first containing the drift; week 9 is a
   blocked batch with none). Retrain on them → **v3**, recalibrate, and score v1, v2, v2
@@ -163,8 +179,10 @@ the Reference (which stays "drifted" forever after week 5):
 - Starting thresholds for the automated rule (tune later), all week over week: KS rises
   ≥ 0.045, the champion's AUC-PR drop versus its own validation baseline grows ≥ 0.04, mean
   score moves ≥ 1 point. Decision order: covariate → concept → label.
-- **Slice analysis**: an automated scan of AUC-PR drop across many slices (high/low
-  `EXT_SOURCE_1/2/3`, income quartiles, age and employment bands, gender) ranks the worst ones;
+- **Slice analysis**: an automated scan of AUC-PR drop across 14 slices (`EXT_SOURCE_1/2/3`,
+  income, age and employment, each below/above the median, plus gender F/M) ranks the worst ones.
+  Cut points are fixed from the champion's training window, and slice metrics use a **rolling
+  two-week window** with bootstrap CIs (`EXT_SOURCE_1` high has ≈47 defaulters per week);
   the segment where drift was injected is not hand-picked. Concept drift concentrates in a
   slice; covariate shift spreads across all. Guard against noise: minimum slice size, flag only
   drops clearly above the overall drop (e.g. ≥ 0.03), ideally with bootstrap CIs, since with
@@ -193,10 +211,10 @@ the Reference (which stays "drifted" forever after week 5):
 Jupyter notebooks live in `notebooks/` and are for **exploration and analysis**; nothing in
 production depends on them. Real logic lives in importable code (`src/`), notebooks call it, and
 anything that must run unattended is an Airflow task.
-- `01_eda.ipynb` (before Etapa 1): class balance, missingness and its mechanism
-  (MCAR/MAR/MNAR), ranges and duplicates (→ data-contract rules), distributions and
-  correlations (→ feature variants, the ≥2 variables to drift, the slices to scan), leakage
-  checks. Output = documented decisions feeding the Pandera/GX rules and feature variants.
+- `01_eda.ipynb` (before Etapa 1): an observation-only first look — class balance, missingness
+  and its mechanism, ranges, duplicates, relationships with the target, leakage checks — ending
+  in facts and open questions. Decisions taken from it (contract rules, null treatment, feature
+  variants, drift variables, slices, drift accumulation) live in `docs/decisions.md`.
 - Retraining analysis notebooks, one per retrain (`02_retrain_v2.ipynb`, `03_retrain_v3.ipynb`):
   investigate *why* and *whether it helped* — the drift diagnosis behind the trigger, candidate
   comparison, reliability diagrams before/after recalibration, per-slice AUC-PR, bootstrap CIs
@@ -321,10 +339,9 @@ Two deliberately different collection patterns, both demonstrated:
 
 ## Open items (confirm before/while building)
 
-- [ ] Final dataset choice + which columns/feature engineering steps (pending review).
 - [ ] Exact Optuna search spaces per model family.
 - [ ] Exact weighting between AUC-PR / Brier / cost-weighted metric for champion selection.
-- [ ] Whether drift accumulates across weeks or is injected independently per week.
+- [ ] Concept-drift segment definition and size (step 9; target ≈0.04 overall AUC-PR drop).
 - [ ] Promotion gate margin, the exact label delay (one week assumed), and thresholds for the
       automated diagnosis rules (stretch phase).
 - [ ] Whether the model server reads the EC2 MLflow registry or a champion exported to S3.
@@ -339,8 +356,9 @@ Planning complete through the architecture decisions above (drift schedule simpl
 retraining/recalibration moved to a stretch phase after reviewing the assignment's actual
 requirements). A visual overview of the flow and the planned Grafana dashboard exists as a
 draft artifact; the timeline was extended to 13 weeks to fit a second retrain for concept
-drift; notebooks (EDA, retraining analysis, drift evaluation) were added to the plan. The
-ordered implementation plan, with what Claude builds and what the repo owner must do, is in
+drift; notebooks (EDA, retraining analysis, drift evaluation) were added to the plan. Steps 1–3b
+are done (skeleton on Python 3.14 with uv, DVC with an S3 remote, EDA, decisions). The ordered
+implementation plan, with what Claude builds and what the repo owner must do, is in
 `docs/build-plan.md` (tick items off as they finish). Everything is proven locally first, then
 rerun on AWS with the same commit, data, frozen thresholds and champion; never tune on AWS.
-No implementation has started yet.
+Next: step 4, the Reference/Production split.

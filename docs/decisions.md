@@ -1,16 +1,16 @@
 # Decisions from the first exploration
 
-Each decision points back to an observation in `docs/reports/01_eda.html`. Status:
-**Confirmed** = approved by the repo owner. **Proposed** = written up, awaiting an explicit OK.
+Each decision points back to an observation in `docs/reports/01_eda.html`. All six were
+approved by the repo owner.
 
 | # | Decision | Status |
 |---|---|---|
-| 1 | Validation rules (blocking vs warning) | Income ceiling = warning **confirmed**; rest proposed |
-| 2 | Null, sentinel and outlier treatment | Proposed |
-| 3 | Feature variants A / B / C | Proposed |
-| 4 | Variables to drift | Categorical-mix drift **confirmed**; rest proposed |
-| 5 | Slices to monitor | Two-week window **confirmed**; rest proposed |
-| 6 | Drift accumulation | Proposed |
+| 1 | Validation rules (blocking vs warning) | Approved |
+| 2 | Null, sentinel and outlier treatment | Approved |
+| 3 | Feature variants A / B / C | Approved |
+| 4 | Variables to drift | Approved |
+| 5 | Slices to monitor | Approved |
+| 6 | Drift accumulation | Approved |
 
 ## 1. Validation rules
 
@@ -26,7 +26,7 @@ Two contracts, because labels arrive late in production.
   - `DAYS_EMPLOYED` <= 0 or exactly 365243 (no other positive value exists);
   - `AMT_CREDIT` > 0 and `AMT_ANNUITY` >= 0 where present.
 - *Warning* (logged and alerted, batch still scored):
-  - `AMT_INCOME_TOTAL` <= 10M with a 99.9% tolerance. **Confirmed as a warning**: 3 training rows
+  - `AMT_INCOME_TOTAL` <= 10M with a 99.9% tolerance. Approved as a warning: 3 training rows
     exceed 10M (max 117M), so a blocking rule would reject our own clean data, and one suspicious
     row should not stop a whole batch;
   - `CODE_GENDER` in {F, M, XNA};
@@ -72,7 +72,7 @@ corruption trips four blocking rules (null incomes, ages under 18, duplicate IDs
 
 - Income and employment (weeks 3-4) and annuity (week 5), as in `CLAUDE.md`, applied in place
   with labels unchanged. State this in the README as measurement/level drift.
-- **Confirmed:** a small shift in the category mix (for example more "Working", fewer
+- Approved: a small shift in the category mix (for example more "Working", fewer
   "Pensioner") in weeks 4-5, done by resampling rows so each row keeps its own label. It
   represents the scenario's "new customer profiles" and exercises Evidently's chi-square/JS tests.
   First thing to cut if time is short.
@@ -91,7 +91,7 @@ corruption trips four blocking rules (null incomes, ages under 18, duplicate IDs
 - 14 slices: `EXT_SOURCE_1/2/3`, income, age and employment, each below/above the median, plus
   gender F/M (fairness check for the governance section).
 - Cut points are fixed from the champion's training window, so slice definitions do not drift.
-- **Confirmed:** slice metrics use a rolling two-week window with bootstrap confidence intervals,
+- Approved: slice metrics use a rolling two-week window with bootstrap confidence intervals,
   because `EXT_SOURCE_1` high has about 47 defaulters per week and `EXT_SOURCE_3` high about 85
   (rule of thumb: about 100). The overall AUC-PR stays on a one-week window.
 
