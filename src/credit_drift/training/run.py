@@ -135,9 +135,9 @@ def run_tune(ctx: Context, args) -> None:
         n_trials = 3 if ctx.quick else (args.trials or TRIALS[family])
         print(f"tuning {variant} / {family}: {n_trials} trials", flush=True)
 
-        def log_trial(number: int, params: dict, score: float | None, pruned: bool, family=family) -> None:
+        def log_trial(number: int, params: dict, metrics: dict, pruned: bool, family=family) -> None:
             ctx.log_run(f"{family} trial {number:02d}", "hyperparameter_tuning", variant, family, number + 1,
-                        params, {"cv_auc_pr_mean": score}, "trial", pruned)
+                        params, metrics, "trial", pruned)
 
         study = tune_family(ctx.cache, variant, family, n_trials, on_trial=log_trial)
         # Re-evaluate the best settings for out-of-fold metrics, then refit on all training rows.

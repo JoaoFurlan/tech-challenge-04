@@ -176,3 +176,16 @@ within-1-SE candidate forward limits that risk.
 
 Cloud: only the champion's run, its metrics and the registered model go to the AWS MLflow, plus a
 summary table of the stages; the full trial history stays local (screenshots/exports for the README).
+
+## 9. Decision threshold (agreed in discussion; implemented with the serving app, step 11)
+
+- AUC-PR and AUC-ROC are threshold-free; a threshold only matters when deciding (approve / reject).
+- It is derived on the training side, from the lender's risk appetite: with calibrated probabilities
+  and the 5:1 cost ratio, flag when p > C_FP / (C_FP + C_FN) = 1/6 (about 0.167); 3:1 gives 0.25,
+  10:1 about 0.09. It is never tuned on the test set; test only reports the outcome at the frozen
+  threshold (cost, flag rate, defaulters caught).
+- Production applies the same frozen number. Drift changes what it does (flag rate, predicted vs
+  observed default rate), which the dashboard shows. Retraining or recalibration recomputes it.
+- The threshold is stored with the registered model as a versioned parameter next to the cost
+  ratio, so the serving app returns the probability and the decision, and any change leaves a
+  trace in the registry. The 5:1 ratio is an assumption a real lender would replace.

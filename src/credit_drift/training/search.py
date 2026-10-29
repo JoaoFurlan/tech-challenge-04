@@ -145,9 +145,13 @@ def cv_evaluate(folds: list[Fold], y: np.ndarray, family: str, params: dict,
 
 
 def tune_family(cache: FoldCache, variant: str, family: str, n_trials: int,
-                on_trial: Callable[[int, dict, float | None, bool], None] | None = None,
+                on_trial: Callable[[int, dict, dict, bool], None] | None = None,
                 seed: int = SEED) -> dict:
-    """Optuna study for one family on one variant. `on_trial(number, params, cv_auc_pr, pruned)` logs each trial."""
+    """Optuna study for one family on one variant.
+
+    `on_trial(number, params, metrics, pruned)` logs each trial: the full cross-validated metrics when it
+    completed, only the partial AUC-PR when the pruner stopped it after the first folds.
+    """
     folds = cache.get(variant, family)
 
     def objective(trial: optuna.Trial) -> float:
@@ -157,12 +161,12 @@ def tune_family(cache: FoldCache, variant: str, family: str, n_trials: int,
             trial.report(running_mean, step)
             if trial.should_prune():
                 if on_trial:
-                    on_trial(trial.number, params, running_mean, True)
+                    on_trial(trial.number, params, {"cv_auc_pr_mean": running_mean}, True)
                 raise optuna.TrialPruned()
 
         result = cv_evaluate(folds, cache.y, family, params, on_fold=report)
         if on_trial:
-            on_trial(trial.number, params, result["cv_auc_pr_mean"], False)
+            on_trial(trial.number, params, result, False)
         return result["cv_auc_pr_mean"]
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)
