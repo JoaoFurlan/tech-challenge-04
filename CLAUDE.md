@@ -110,7 +110,10 @@ sensibly:
 
 - Concept drift is mostly invisible to PSI/KS (the features did not move again); the signal is
   the performance drop once labels arrive (AUC-PR, Brier). Say so explicitly in the demo.
-- Tool: **Evidently AI** (`DataDriftPreset` + explicit KS/PSI/χ²/JS tests).
+- Tool: **Evidently AI** (`DataDriftPreset` + explicit KS/PSI/χ²/JS tests), implemented in
+  `src/credit_drift/monitoring/` (see `docs/decisions.md` #11): the champion's own engineered input frame,
+  PSI as the alert signal (bands 0.10 / 0.25, provisional until step 14), seeded jitter on tie-heavy numeric
+  columns, a rule-selected 32-feature subset for the HTML, all columns plus the model SCORE in the tables.
 - One HTML report generated per week (Evidently, against the current champion's training window).
 - **Two drift baselines**: PSI against the original Reference (informational — how far the world
   has moved overall) and PSI against the **current champion's training window** (drives the
@@ -355,11 +358,11 @@ Planning complete through the architecture decisions above (drift schedule simpl
 retraining/recalibration moved to a stretch phase after reviewing the assignment's actual
 requirements). A visual overview of the flow and the planned Grafana dashboard exists as a
 draft artifact; the timeline was extended to 13 weeks to fit a second retrain for concept
-drift; notebooks (EDA, retraining analysis, drift evaluation) were added to the plan. Steps 1–7 and 9
+drift; notebooks (EDA, retraining analysis, drift evaluation) were added to the plan. Steps 1–7, 9 and 10
 are done (skeleton on Python 3.14 with uv, DVC with an S3 remote, EDA, decisions, the data split,
 contracts, staged MLflow experiments and a registered champion `credit_scoring@champion`:
 variant B + LightGBM, Platt-calibrated). The ordered
 implementation plan, with what Claude builds and what the repo owner must do, is in
 `docs/build-plan.md` (tick items off as they finish). Everything is proven locally first, then
 rerun on AWS with the same commit, data, frozen thresholds and champion; never tune on AWS.
-Next: step 10 (drift detection with Evidently); step 8 (`training_pipeline` DAG) is deferred until Airflow is needed.
+Next: step 11 (model server); step 8 (`training_pipeline` DAG) is deferred until Airflow is needed.

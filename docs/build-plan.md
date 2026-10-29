@@ -107,7 +107,7 @@ Ordered implementation plan for the Tech Challenge 4 project. Design decisions l
   evaluation notebook. Independent of step 11, so they can be built in parallel.
 
 ### 10. Drift detection [R]
-- [ ] **Claude:** Evidently report per week; PSI and KS against both baselines (original
+- [x] **Claude:** Evidently report per week; PSI and KS against both baselines (original
       Reference, and the champion's training window).
 - **Why:** the statistical evidence for the rubric (25%). Feeds the dashboard and alerts.
 

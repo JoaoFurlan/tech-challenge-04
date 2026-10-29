@@ -1,0 +1,14 @@
+week,baseline,blocked,rows,mean_score,n_monitored,n_psi_moderate,n_psi_major,max_psi,max_psi_feature,mean_psi,n_all_psi_moderate,score_psi,score_ks,blocked_rules
+1,champion_window,False,5000.0,0.0821,32.0,0.0,0.0,0.0123,ORGANIZATION_TYPE,0.0023,0.0,0.0007,0.0117,
+2,champion_window,False,5000.0,0.0838,32.0,0.0,0.0,0.0094,ORGANIZATION_TYPE,0.0018,0.0,0.0039,0.0184,
+3,champion_window,False,5000.0,0.0831,32.0,0.0,0.0,0.0863,AMT_INCOME_TOTAL,0.0074,0.0,0.0015,0.0108,
+4,champion_window,False,5000.0,0.084,32.0,2.0,0.0,0.1563,AMT_INCOME_TOTAL,0.0145,2.0,0.0042,0.0221,
+5,champion_window,False,5000.0,0.0901,32.0,3.0,2.0,0.8009,ANNUITY_CREDIT,0.0525,3.0,0.0233,0.0612,
+6,champion_window,False,5000.0,0.0881,32.0,3.0,2.0,0.9187,ANNUITY_CREDIT,0.0542,3.0,0.0198,0.0651,
+7,champion_window,False,5000.0,0.0873,32.0,3.0,2.0,0.9294,ANNUITY_CREDIT,0.0544,3.0,0.0186,0.0564,
+8,champion_window,False,5000.0,0.0878,32.0,3.0,2.0,0.9376,ANNUITY_CREDIT,0.0548,3.0,0.0215,0.0648,
+9,all,True,,,,,,,,,,,,AMT_GOODS_PRICE:numeric_dtype; AMT_INCOME_TOTAL:not_nullable; DAYS_BIRTH:age_18_to_100; SK_ID_CURR:field_uniqueness
+10,champion_window,False,5000.0,0.0901,32.0,3.0,2.0,0.7969,ANNUITY_CREDIT,0.0543,3.0,0.027,0.0726,
+11,champion_window,False,5000.0,0.0886,32.0,3.0,2.0,0.8311,ANNUITY_CREDIT,0.0505,3.0,0.0183,0.0603,
+12,champion_window,False,5000.0,0.0887,32.0,3.0,2.0,0.8414,ANNUITY_CREDIT,0.0532,3.0,0.0228,0.0667,
+13,champion_window,False,5000.0,0.0878,32.0,3.0,2.0,0.8389,ANNUITY_CREDIT,0.0531,3.0,0.0225,0.0666,

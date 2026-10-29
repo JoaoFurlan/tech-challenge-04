@@ -128,6 +128,45 @@ O que isso faz com o modelo campeão (resultado medido, não suposto):
 - Uma única semana de 5.000 clientes é ruidosa (intervalo de confiança do AUC-PR de ±0,04), por isso
   as métricas por fatia usam janelas de duas semanas.
 
+## Detecção de drift
+
+Cada semana é validada pelo contrato e, se passar, pontuada pelo modelo campeão e comparada com duas
+bases (`uv run python -m credit_drift.monitoring.run_drift`; decisões em `docs/decisions.md`, seção 11):
+
+- a **Referência original** (informativa: quanto o mundo mudou desde o treino);
+- a **janela de treino do campeão** (é a que dispara alertas; muda de lugar quando um novo modelo é
+  promovido). Para o primeiro campeão as duas são os mesmos dados.
+
+São medidos, para todas as colunas de entrada do modelo (inclusive as que ele mesmo cria, como a razão
+parcela/renda) e para o **score**: PSI, KS (numéricas), qui-quadrado (categóricas) e distância de
+Jensen-Shannon. O **PSI** decide os alertas (faixas: abaixo de 0,10 sem drift, 0,10–0,25 moderado, acima de
+0,25 forte; provisórias até a etapa de calibração), porque com milhares de linhas o p-valor acusa
+qualquer diferença, enquanto o PSI mede o tamanho da mudança. Valores ausentes têm faixa própria no PSI,
+e colunas numéricas com muitos valores repetidos (61% das rendas estão em 8 números redondos) recebem uma
+perturbação de ±2% com semente fixa para que o PSI não oscile conforme o valor cai na borda de uma faixa.
+
+Os relatórios HTML do **Evidently** (PSI, KS e qui-quadrado, 32 variáveis escolhidas por uma regra sobre a
+Referência, mais o score) das semanas 1, 5 e 8 estão em `docs/reports/drift/`.
+
+O alerta "drift no conjunto de dados" do Evidently só dispara quando 50% das colunas mudam, o que nunca
+acontece com 3 de 32 variáveis; por isso, no teste de PSI ele segue a nossa regra (2 ou mais variáveis com
+PSI ≥ 0,10) e, no teste de KS/qui-quadrado, mantém o padrão de 50% de propósito: os p-valores marcam 4 de 32
+colunas até na semana de controle e 14 de 32 nas semanas 5 e 8, e por isso servem de evidência, não de alerta.
+
+| Semanas | Variáveis monitoradas com PSI ≥ 0,10 | Leitura |
+|---|---|---|
+| 1–2 | 0 (máximo 0,012) | controle: os detectores ficam quietos |
+| 3 | 0 (renda 0,086) | drift gradual ainda abaixo do limite |
+| 4 | 2 (renda 0,156; parcela/renda 0,10) | primeiro alerta |
+| 5–8, 10–13 | 3, duas delas fortes (parcela/crédito 0,80–0,94; parcela/renda 0,27–0,34) | o choque abrupto e o novo normal |
+| 9 | lote bloqueado pelo contrato | sem pontuação e sem relatório |
+
+Duas lições para o vídeo: (1) a **parcela bruta** sozinha (PSI 0,08) teria escondido o choque; as razões
+financeiras o revelam. (2) As semanas 8 e 10–13 (drift de conceito) são **idênticas** às 5–7 para todos os
+detectores de distribuição: nenhuma entrada mudou, e só o desempenho, quando os rótulos chegam, mostra a
+queda. Já a mudança na mistura de tipos de renda tem PSI baixo (0,031), mas p-valor de qui-quadrado da ordem
+de 1e-26: PSI e testes de hipótese respondem a perguntas diferentes.
+
 ## Contratos de dados
 
 Toda carga de dados passa por dois validadores com papéis diferentes (regras em

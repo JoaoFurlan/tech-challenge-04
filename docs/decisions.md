@@ -231,3 +231,53 @@ Code in `src/credit_drift/drift/`; run with `uv run python -m credit_drift.drift
   single week cannot reliably show a 0.04 drop (AUC-ROC is steadier). This is why slice metrics use a
   two-week window and why detector thresholds must be tuned offline on more than one simulation.
 
+## 11. Drift detection (step 10)
+
+Code in `src/credit_drift/monitoring/`; run with `uv run python -m credit_drift.monitoring.run_drift`.
+Showcase reports (weeks 1, 5, 8) and the summary table are in `docs/reports/drift/`; the full set of 12
+HTML reports (about 7.8 MB each) is regenerated locally into `reports/drift/` and not committed.
+
+- **What is monitored:** the champion's own input frame (the raw columns plus the features it engineers),
+  taken from its pipeline, so a new champion is monitored on what it actually consumes. Every column
+  gets PSI, KS (numeric), chi-square (categorical) and JS distance in `data/monitoring/drift_features.parquet`,
+  plus the model **SCORE** (its distribution against the held-out test scores, not training scores, which
+  are overfit). The ID and gender are left out (gender is a fairness slice, not an input).
+- **Monitored subset** (HTML report and alert counts), by a rule on the Reference only, never from the
+  injected drift: the 20 numeric columns with the highest univariate AUC (de-duplicated at |corr| 0.9),
+  the four loan-size fundamentals (income, credit, annuity, goods price), the champion's five financial
+  ratios (debt-to-income and friends), and the 5 categoricals most associated with default (Cramer's V):
+  32 features, in `config/monitored_features.json`.
+- **PSI drives alerts, p-values are evidence.** With thousands of rows a p-value flags almost any
+  difference, while PSI measures how far a distribution moved. Bands: < 0.10 none, 0.10-0.25 moderate,
+  >= 0.25 major. These are provisional until step 14 freezes thresholds tuned on two simulations.
+- **PSI smoothing:** 61% of incomes sit on 8 round numbers, so decile-based PSI jumped around (0.40 for a
+  10% shift, 0.19 for a 14% one) when a spike straddled a bin edge. Continuous columns get a seeded +-2%
+  jitter before binning (KS uses the original values); flags are binned by value. Missing values have
+  their own bin. Evidently's own PSI in the HTML report uses its binning, so values can differ slightly.
+- **Two baselines:** the original Reference (informational) and the champion's training window (alerts).
+  For the first champion they are the same data, so one table is computed and reused; the second
+  re-points to the new training window on every promotion.
+- **A batch that fails the contract is not scored and gets no report** (week 9), as in the production loop.
+- **Detection timeline on the simulated weeks (monitored features at PSI >= 0.10):**
+
+  | Weeks | Result |
+  |---|---|
+  | 1-2 | 0 (maximum PSI 0.012, score PSI <= 0.004): the control weeks stay quiet |
+  | 3 | 0: income 0.086, still building |
+  | 4 | 2: income 0.156, annuity/income 0.10 |
+  | 5-8, 10-13 | 3, two of them major: annuity/credit 0.80-0.94, annuity/income 0.27-0.34, income 0.15-0.18 |
+  | 9 | blocked by the contract |
+
+  Score drift is small (PSI 0.02, KS 0.06-0.07, mean 0.082 -> 0.088). The category mix is a good
+  illustration of the tests' roles: `NAME_INCOME_TYPE` has PSI 0.031 (low) and JS 0.075 but a chi-square
+  p-value near 1e-26. Weeks 8 and 10-13 look identical to weeks 5-7: concept drift moves no input, so only
+  performance (with labels) can reveal it.
+- **Evidently's "dataset drift" banner.** Evidently calls a dataset drifted when 50% of the columns drifted,
+  a default that cannot fire for a few drifted inputs out of 32 (it said "not drifted" in every week while the
+  per-column results showed drift). For the PSI preset the banner now follows our alert rule, `drift_share` 0.05
+  (2 or more monitored features at PSI >= 0.10): control weeks "not detected", weeks 4-13 "detected". The KS /
+  chi-square preset keeps the default 0.5 on purpose: p-values flag 4 of 32 columns even in the clean control
+  week (12%) and 14 of 32 in weeks 5 and 8 (44%), so they cannot drive an alert.
+- **Raw annuity alone would have missed the abrupt shock** (PSI 0.08, KS 0.13); the ratios catch it, which
+  is why the champion's ratios are always monitored.
+
