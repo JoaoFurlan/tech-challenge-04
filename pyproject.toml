@@ -17,7 +17,8 @@ training = ["pyarrow", "mlflow", "optuna", "xgboost", "lightgbm"]
 validation = ["pandera", "great-expectations"]
 monitoring = ["pyarrow", "evidently", "prometheus-client", "requests"]
 mlflow-server = ["mlflow", "psycopg2-binary"]
-serving = ["fastapi", "uvicorn", "mlflow-skinny", "prometheus-client"]
+# lightgbm because the champion is LightGBM; xgboost would be added only if an XGBoost champion is promoted
+serving = ["fastapi", "uvicorn", "mlflow-skinny", "prometheus-client", "pandera", "lightgbm"]
 
 [tool.uv]
 default-groups = ["dev", "training", "validation", "monitoring"]

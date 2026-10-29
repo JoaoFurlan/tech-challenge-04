@@ -25,12 +25,33 @@ services:
     environment:
       MLFLOW_BACKEND_URI: postgresql+psycopg2://${POSTGRES_USER:-mlops}:${POSTGRES_PASSWORD:-mlops}@postgres:5432/${POSTGRES_DB:-mlflow}
       MLFLOW_ARTIFACTS_DESTINATION: /mlartifacts
+      # Host names MLflow answers to (it rejects others as DNS rebinding); add the public name on AWS.
+      MLFLOW_ALLOWED_HOSTS: localhost:*,127.0.0.1:*,mlflow:*
     volumes:
       - mlartifacts:/mlartifacts
     ports:
       - "127.0.0.1:5000:5000"
     depends_on:
       postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 10s
+      retries: 12
+
+  serving:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.serving
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MODEL_NAME: credit_scoring
+      MODEL_ALIAS: champion
+      RELOAD_TOKEN: ${RELOAD_TOKEN:-dev-reload-token}  # set a real secret anywhere but a laptop
+    ports:
+      - "127.0.0.1:8010:8000"  # 8000 belongs to another local project
+    depends_on:
+      mlflow:
         condition: service_healthy
 
 volumes:

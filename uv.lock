@@ -690,7 +690,9 @@ monitoring = [
 ]
 serving = [
     { name = "fastapi" },
+    { name = "lightgbm" },
     { name = "mlflow-skinny" },
+    { name = "pandera" },
     { name = "prometheus-client" },
     { name = "uvicorn" },
 ]
@@ -734,7 +736,9 @@ monitoring = [
 ]
 serving = [
     { name = "fastapi" },
+    { name = "lightgbm" },
     { name = "mlflow-skinny" },
+    { name = "pandera" },
     { name = "prometheus-client" },
     { name = "uvicorn" },
 ]

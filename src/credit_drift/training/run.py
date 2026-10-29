@@ -5,6 +5,7 @@
   uv run python -m credit_drift.training.run tune       # hyperparameter_tuning: Optuna per shortlisted family
   uv run python -m credit_drift.training.run select     # champion: pick, calibrate, test once, register
   uv run python -m credit_drift.training.run all        # the four stages in order
+  uv run python -m credit_drift.training.run tag        # (re)write the decision threshold on the champion
 Add --quick for a smoke test (small sample, 3 trials, separate experiments and model name).
 
 Every MLflow run carries the params `model`, `feature_variant` and `trial` (0 outside tuning), the tag
@@ -22,7 +23,13 @@ import mlflow
 import pandas as pd
 
 from credit_drift.split import DATA_DIR, REFERENCE_DIR
-from credit_drift.training.champion import MODEL_NAME, pick_champion, select_and_register, shortlist
+from credit_drift.training.champion import (
+    MODEL_NAME,
+    pick_champion,
+    select_and_register,
+    shortlist,
+    tag_decision_settings,
+)
 from credit_drift.training.describe import NOTE_TAG, describe_run
 from credit_drift.training.features import VARIANTS
 from credit_drift.training.search import (
@@ -162,6 +169,12 @@ def run_select(ctx: Context, _args) -> None:
     print(json.dumps(baseline, indent=1))
 
 
+def run_tag(_args) -> None:
+    mlflow.set_tracking_uri(TRACKING_URI)
+    version = mlflow.MlflowClient().get_model_version_by_alias(MODEL_NAME, "champion").version
+    print(f"{MODEL_NAME} v{version}:", tag_decision_settings(MODEL_NAME, version))
+
+
 def run_all(ctx: Context, args) -> None:
     for stage in (run_features, run_models, run_tune, run_select):
         started = time.time()
@@ -177,12 +190,15 @@ def main() -> None:
     for stream in (sys.stdout, sys.stderr):  # MLflow prints emoji; Windows consoles default to cp1252
         stream.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("stage", choices=STAGES)
+    parser.add_argument("stage", choices=[*STAGES, "tag"])
     parser.add_argument("--quick", action="store_true", help="smoke test: 10k rows, 3 trials, separate names")
     parser.add_argument("--trials", type=int, help="override the trials per family (tune stage)")
     parser.add_argument("--family", choices=FAMILIES, help="tune only this family")
     args = parser.parse_args()
-    STAGES[args.stage](Context(args.quick), args)
+    if args.stage == "tag":  # needs no data, so no Context
+        run_tag(args)
+    else:
+        STAGES[args.stage](Context(args.quick), args)
 
 
 if __name__ == "__main__":

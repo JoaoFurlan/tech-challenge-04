@@ -27,6 +27,16 @@ MODEL_NAME = "credit_scoring"
 CALIBRATION_METHODS = ("isotonic", "platt")
 
 
+def tag_decision_settings(model_name: str, version: str, cost_ratio: float = DEFAULT_RATIO, **extra: str) -> dict:
+    """Store the cost ratio and the decision threshold it implies on the registered model version, so the serving
+    app reads them from the registry and any change leaves a trace there."""
+    tags = {"cost_ratio": f"{cost_ratio:g}", "decision_threshold": f"{1 / (1 + cost_ratio):.6f}", **extra}
+    client = MlflowClient()
+    for key, value in tags.items():
+        client.set_model_version_tag(model_name, str(version), key, value)
+    return tags
+
+
 def shortlist(results: list[dict]) -> list[dict]:
     """Cells within one standard error of the best cross-validated AUC-PR."""
     best = max(results, key=lambda r: r["cv_auc_pr_mean"])
@@ -120,6 +130,8 @@ def select_and_register(results_dir: Path, reference_dir: Path, tracking_experim
             code_paths=[str(Path(credit_drift.__file__).parent)])
         version = info.registered_model_version
         MlflowClient().set_registered_model_alias(model_name, "champion", version)
+        tag_decision_settings(model_name, version, calibration=method,
+                              training_cell=f"{champion['variant']}/{champion['family']}")
 
     baseline = {"model": model_name, "version": version, "run_id": run.info.run_id,
                 "cell": f"{champion['variant']}/{champion['family']}", "calibration": method,

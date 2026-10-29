@@ -1,12 +1,14 @@
 """Aggregate profile of the training data (null shares, categories). No customer rows."""
 import json
+import os
 from pathlib import Path
 
 import pandas as pd
 
 from credit_drift.data import TARGET
 
-PROFILE_PATH = Path(__file__).resolve().parents[3] / "config" / "contract_profile.json"
+PROFILE_PATH = Path(os.environ.get(  # the container sets CONTRACT_PROFILE_PATH; a checkout uses config/
+    "CONTRACT_PROFILE_PATH", Path(__file__).resolve().parents[3] / "config" / "contract_profile.json"))
 
 
 def build_profile(train: pd.DataFrame) -> dict:

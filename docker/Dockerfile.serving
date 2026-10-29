@@ -12,8 +12,13 @@ RUN uv sync --frozen --no-dev --no-default-groups --group serving --no-editable
 
 FROM python:3.14-slim
 
+# LightGBM needs the OpenMP runtime, which the slim base image leaves out (about 0.3 MB).
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 COPY --from=build /app/.venv /app/.venv
-ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1
+COPY config/contract_profile.json /app/config/contract_profile.json
+ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1 CONTRACT_PROFILE_PATH=/app/config/contract_profile.json
 EXPOSE 8000
 CMD ["uvicorn", "credit_drift.serving.app:app", "--host", "0.0.0.0", "--port", "8000"]
