@@ -346,7 +346,8 @@ Two deliberately different collection patterns, both demonstrated:
 
 - [ ] Promotion gate margin, the exact label delay (one week assumed), and thresholds for the
       automated diagnosis rules (stretch phase).
-- [ ] Whether the model server reads the EC2 MLflow registry or a champion exported to S3.
+- [ ] Whether the cloud model server reads the EC2 MLflow registry (how it works today, locally) or a champion
+      exported to S3 (would drop `mlflow-skinny`, about 75 MB of the image).
 - [ ] Notebook tooling: clean diffs (nbstripout/jupytext) vs committing executed notebooks, and
       which notebooks beyond the EDA are worth building.
 - [ ] Whether to add the optional Grafana → Evidently-HTML clickthrough (stretch goal, not
@@ -358,11 +359,11 @@ Planning complete through the architecture decisions above (drift schedule simpl
 retraining/recalibration moved to a stretch phase after reviewing the assignment's actual
 requirements). A visual overview of the flow and the planned Grafana dashboard exists as a
 draft artifact; the timeline was extended to 13 weeks to fit a second retrain for concept
-drift; notebooks (EDA, retraining analysis, drift evaluation) were added to the plan. Steps 1–7, 9 and 10
+drift; notebooks (EDA, retraining analysis, drift evaluation) were added to the plan. Steps 1–7 and 9–11
 are done (skeleton on Python 3.14 with uv, DVC with an S3 remote, EDA, decisions, the data split,
 contracts, staged MLflow experiments and a registered champion `credit_scoring@champion`:
 variant B + LightGBM, Platt-calibrated). The ordered
 implementation plan, with what Claude builds and what the repo owner must do, is in
 `docs/build-plan.md` (tick items off as they finish). Everything is proven locally first, then
 rerun on AWS with the same commit, data, frozen thresholds and champion; never tune on AWS.
-Next: step 11 (model server); step 8 (`training_pipeline` DAG) is deferred until Airflow is needed.
+Next: step 8 (Airflow, needed by step 12) and the `production_monitoring` DAG (step 12).

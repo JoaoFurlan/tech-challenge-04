@@ -281,3 +281,41 @@ HTML reports (about 7.8 MB each) is regenerated locally into `reports/drift/` an
 - **Raw annuity alone would have missed the abrupt shock** (PSI 0.08, KS 0.13); the ratios catch it, which
   is why the champion's ratios are always monitored.
 
+## 12. Model server (step 11)
+
+Code in `src/credit_drift/serving/` (`registry.py` resolves the champion, `app.py` is the FastAPI app); image
+`docker/Dockerfile.serving`; compose service `serving` on `127.0.0.1:8010` (8000 is taken by another local project).
+
+- **Endpoints:** `POST /predict` (raw applicant records in, probability and `high_risk` flag out), `GET /metrics`
+  (Prometheus), `POST /reload`, plus `/health` (alive), `/ready` (503 until a model is loaded) and `/model`.
+- **The contract guards the door:** every request goes through the same Pandera rules as the weekly batches.
+  A violation is a 422 listing column, rule and row count, never the offending values (tested). Extra fields
+  are ignored; JSON nulls become NaN; a numeric column carrying strings such as "123" is rejected as malformed.
+  Up to 10,000 records per request.
+- **Registry, not files:** the server looks up `models:/credit_scoring@champion`, then loads that exact version
+  (so the model and its metadata always match). `/reload` repeats this, which is how a promotion reaches a
+  running server. A failed reload keeps serving the previous model (502, tested). `/reload` requires the
+  `X-Reload-Token` header when `RELOAD_TOKEN` is set: the compose default is a dev value, any shared host must
+  set a real secret. If the registry is down at startup the server stays alive but not ready, and `/reload`
+  fixes it later.
+- **Decision threshold (agreed in #9):** stored as tags `cost_ratio` and `decision_threshold` on the registered
+  model version (`uv run python -m credit_drift.training.run tag` backfilled version 1; new champions get them
+  at registration). The server reads them, so a promotion with another threshold changes decisions without a
+  code change (tested). `high_risk` is a flag for review, not an automated rejection: the final decision should
+  allow human review (to be detailed in the governance section).
+- **Metrics:** `predict_requests_total{outcome}`, `predict_rows_total`, `predict_high_risk_total`,
+  `predict_latency_seconds`, `prediction_score` (histogram of predicted probabilities, the push-free score drift
+  signal), `model_info{name,version,alias}`, `model_decision_threshold`, `model_loaded_timestamp_seconds`,
+  `model_reloads_total{outcome}`.
+- **Measured through the container:** 500 rows in 178 ms and a whole 5,000-row week in 0.68 s; probabilities
+  match the champion run locally to 5e-7 (the API rounds to 6 decimals).
+- **Image:** `python:3.14-slim`, multi-stage, 827 MB. scipy, pandas, numpy and scikit-learn are about 300 MB of
+  the venv; `mlflow-skinny` and its dependencies about 75 MB. Dependencies follow the champion's family: it is
+  LightGBM, so `lightgbm` (plus `libgomp1`, about 0.3 MB of system library) is installed and xgboost is not;
+  promoting an XGBoost champion means adding it. Exporting the champion to S3 as a plain file would drop
+  `mlflow-skinny`, which links to the open question of how the cloud server reads the model.
+- **MLflow server:** it rejects requests addressed to unknown host names as DNS rebinding, so
+  `--allowed-hosts` (env `MLFLOW_ALLOWED_HOSTS`, default `localhost:*,127.0.0.1:*,mlflow:*`) now lists the
+  compose name; the public name must be added on AWS. The mlflow service also has a healthcheck, which the
+  serving service waits for.
+

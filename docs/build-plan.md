@@ -112,7 +112,7 @@ Ordered implementation plan for the Tech Challenge 4 project. Design decisions l
 - **Why:** the statistical evidence for the rubric (25%). Feeds the dashboard and alerts.
 
 ### 11. Model server [R, via observability]
-- [ ] **Claude:** containerised FastAPI with `/predict`, `/metrics`, `/reload`, loading
+- [x] **Claude:** containerised FastAPI with `/predict`, `/metrics`, `/reload`, loading
       `models:/<name>@champion`.
 - **Why:** mirrors real serving and gives Prometheus something to scrape. Called over HTTP
   by the monitoring DAG.

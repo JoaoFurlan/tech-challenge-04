@@ -128,6 +128,31 @@ O que isso faz com o modelo campeão (resultado medido, não suposto):
 - Uma única semana de 5.000 clientes é ruidosa (intervalo de confiança do AUC-PR de ±0,04), por isso
   as métricas por fatia usam janelas de duas semanas.
 
+## Servidor do modelo
+
+Um serviço FastAPI (`docker compose up -d`, porta local 8010) carrega o campeão do registro do MLflow
+(`models:/credit_scoring@champion`) e o serve por HTTP; é ele que o DAG de monitoramento chamará.
+
+| Endpoint | Função |
+|---|---|
+| `POST /predict` | recebe registros de clientes e devolve, para cada um, a probabilidade de inadimplência e `high_risk` (probabilidade acima do limiar de decisão) |
+| `GET /metrics` | métricas Prometheus: requisições por resultado, linhas pontuadas, clientes sinalizados, latência, distribuição das probabilidades, versão do modelo no ar |
+| `POST /reload` | consulta o alias `champion` de novo e troca o modelo sem reiniciar (exige o cabeçalho `X-Reload-Token`); se falhar, continua com o modelo anterior |
+| `GET /health`, `/ready`, `/model` | vivo, pronto (503 até haver modelo) e metadados do modelo (versão, limiar) |
+
+```bash
+curl -s localhost:8010/model
+curl -s -X POST localhost:8010/predict -H 'content-type: application/json' -d '{"records": [ {...colunas do cliente...} ]}'
+```
+
+- **O contrato de dados vale na entrada:** cada requisição passa pelas mesmas regras do lote semanal; uma
+  violação devolve 422 com a coluna, a regra e a contagem de linhas, **nunca os valores** (LGPD).
+- **O limiar de decisão** (1/6, custo 5:1) fica registrado como *tag* na versão do modelo no MLflow; ao promover
+  um modelo com outro limiar, as decisões mudam sem alterar código. `high_risk` é uma sinalização para
+  análise, não uma recusa automática: a decisão final deve permitir revisão humana.
+- Medido pelo contêiner: 500 clientes em 178 ms e uma semana inteira (5.000) em 0,68 s; as probabilidades
+  coincidem com as do modelo rodando localmente.
+
 ## Detecção de drift
 
 Cada semana é validada pelo contrato e, se passar, pontuada pelo modelo campeão e comparada com duas
