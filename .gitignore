@@ -22,3 +22,7 @@ mlartifacts/
 
 # Training outputs (tuned cells, fitted pipelines): rebuilt by the training stage, tracked in MLflow
 /artifacts/
+
+# Generated drift outputs: the full set of per-week HTML reports and the monitoring tables
+/reports/
+/data/monitoring/

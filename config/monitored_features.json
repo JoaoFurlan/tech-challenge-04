@@ -1,0 +1,45 @@
+{
+ "rule": "Applied to the model's own input frame (raw columns plus the features the champion engineers). Rule: the 20 numeric columns with the highest univariate AUC against the target (de-duplicated: a column is skipped when it correlates above 0.9 with one already chosen), the four loan-size fundamentals every lender watches, the champion's financial ratios (debt-to-income and friends), and the 5 categorical columns most associated with the target (Cramer's V). Everything else is still measured (see `drift_table`) but kept out of the HTML report so it stays readable.",
+ "numeric_by_univariate_auc": {
+  "EXT_PROD": 0.7414,
+  "EXT_SOURCE_3": 0.687,
+  "EXT_SOURCE_2": 0.6577,
+  "EXT_SOURCE_1": 0.6543,
+  "DAYS_BIRTH": 0.5842,
+  "DAYS_EMPLOYED": 0.582,
+  "CREDIT_GOODS": 0.563,
+  "OWN_CAR_AGE": 0.5601,
+  "FLOORSMAX_AVG": 0.5559,
+  "DAYS_ID_PUBLISH": 0.5547,
+  "REGION_RATING_CLIENT_W_CITY": 0.5532,
+  "DAYS_LAST_PHONE_CHANGE": 0.5506,
+  "DAYS_REGISTRATION": 0.5501,
+  "LIVINGAREA_AVG": 0.5478,
+  "ELEVATORS_AVG": 0.5431,
+  "LIVINGAPARTMENTS_AVG": 0.5389,
+  "HOUSING_BLOCK_MISSING": 0.5387,
+  "REG_CITY_NOT_WORK_CITY": 0.5384,
+  "APARTMENTS_MODE": 0.5384,
+  "ANNUITY_CREDIT": 0.535
+ },
+ "loan_size": [
+  "AMT_INCOME_TOTAL",
+  "AMT_CREDIT",
+  "AMT_ANNUITY",
+  "AMT_GOODS_PRICE"
+ ],
+ "financial_ratios": [
+  "ANNUITY_INCOME",
+  "CREDIT_INCOME",
+  "CREDIT_GOODS",
+  "ANNUITY_CREDIT",
+  "EMPLOYED_AGE"
+ ],
+ "categorical_by_cramers_v": {
+  "OCCUPATION_TYPE": 0.081,
+  "ORGANIZATION_TYPE": 0.0789,
+  "NAME_INCOME_TYPE": 0.0633,
+  "NAME_EDUCATION_TYPE": 0.0608,
+  "WALLSMATERIAL_MODE": 0.0467
+ }
+}
