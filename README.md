@@ -25,8 +25,9 @@ Não é necessária nenhuma conta ou credencial AWS.
 1. Baixe `application_train.csv` e `HomeCredit_columns_description.csv` da competição
    [Home Credit Default Risk](https://www.kaggle.com/competitions/home-credit-default-risk/data)
    no Kaggle (é preciso aceitar as regras da competição) e salve-os em `data/raw/`.
-2. Confirme a integridade: `uv run dvc status`. O DVC compara o hash dos arquivos com os
-   ponteiros versionados (`data/raw/*.dvc`) e deve informar que os dados estão atualizados.
+2. Confirme a integridade: `uv run dvc status data/raw/application_train.csv.dvc data/raw/HomeCredit_columns_description.csv.dvc`.
+   O DVC compara o hash dos arquivos com os ponteiros versionados e deve informar que os dados
+   estão atualizados (as demais pastas em `data/` só existem depois do passo 3).
 3. Todo o restante (partes de referência, lotes semanais com drift simulado) é **regenerado pelo
    código** a partir de sementes fixas; não há dados derivados para baixar. Por exemplo, a divisão
    Referência/Produção: `uv run python -m credit_drift.split`.
