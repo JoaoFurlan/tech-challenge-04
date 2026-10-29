@@ -1,0 +1,22 @@
+# Airflow with the project installed in its own virtualenv, so Airflow's pinned dependencies never fight ours
+# (LightGBM, Great Expectations, MLflow, Evidently). DAG tasks call /opt/credit-drift/.venv/bin/python.
+# The source, config and data are bind-mounted at run time, so a `git pull` changes behaviour without a rebuild.
+FROM apache/airflow:slim-3.3.2-python3.14
+
+USER root
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+# group-writable because the container runs as the host user's uid with gid 0 (see AIRFLOW_UID in the compose file)
+RUN mkdir -p /opt/credit-drift && chown airflow:0 /opt/credit-drift && chmod g+w /opt/credit-drift
+USER airflow
+
+# The slim image has no Postgres driver for the metadata database.
+RUN pip install --no-cache-dir psycopg2-binary
+
+WORKDIR /opt/credit-drift
+COPY --chown=airflow:0 pyproject.toml uv.lock README.md ./
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PROJECT_ENVIRONMENT=/opt/credit-drift/.venv
+RUN uv sync --frozen --no-dev --no-default-groups --no-cache --no-install-project \
+    --group training --group validation --group monitoring --python "$(which python)"
+
+ENV PYTHONPATH=/opt/credit-drift/src
+WORKDIR /opt/airflow
