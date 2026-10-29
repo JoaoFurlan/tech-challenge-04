@@ -22,5 +22,10 @@ RUN uv sync --frozen --no-dev --no-default-groups --no-cache --no-install-projec
 # environment above, so adding a driver never rebuilds that environment.
 RUN pip install --no-cache-dir asyncpg
 
+# LightGBM needs the OpenMP runtime, which the slim base image leaves out.
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/*
+USER airflow
+
 ENV PYTHONPATH=/opt/credit-drift/src
 WORKDIR /opt/airflow
