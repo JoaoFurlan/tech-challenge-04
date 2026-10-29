@@ -5,7 +5,6 @@ Production pool -> a plain random sample (no stratification): real weekly defaul
 fluctuate, and the control weeks must prove the detectors cope with that noise.
 The Production pool is cut into weekly batches later, by the drift simulator.
 """
-from pathlib import Path
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
