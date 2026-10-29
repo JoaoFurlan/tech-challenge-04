@@ -78,7 +78,7 @@ disjoint Production pool, one episode per synthetic week:
 | Week(s) | Drift type | Mechanism |
 |---|---|---|
 | 1–2 | none (control) | sanity check — detectors must NOT fire |
-| 3–4 | gradual covariate shift | slow drift in income and employment duration (≥2 variables); weeks 4–5 also shift the category mix (e.g. income type) by resampling rows |
+| 3–4 | gradual covariate shift | slow drift in income and employment duration (≥2 variables); the category mix (income type) starts to move in week 4 |
 | 5 | abrupt covariate shift | sudden shock to debt-to-income ratio |
 | 6–7 | new normal (covariate regime persists) | the week-5 regime stays in place; v2 (trained on labels through week 4 under a one-week label delay) has seen the income shift but not the week-5 payment shock, so it only partly covers this regime |
 | 8 | concept drift | invert/dampen a feature↔target relationship for a subset — a challenger has *not* seen this |
@@ -96,14 +96,15 @@ sensibly:
   employment duration × 0.85.
 - Week 5: `AMT_ANNUITY` × 1.15 on top of income × 0.86, so annuity ÷ income jumps. Weeks 6–7: the
   week-5 transform again on fresh rows.
-- Weeks 4–5 also: a small shift in the category mix (more "Working", fewer "Pensioner") by
-  resampling rows, so each row keeps its own label (pure covariate shift, exercises χ²/JS tests;
-  first thing to cut if time is short). The numeric transforms change values in place with labels
-  unchanged (measurement/level drift) — state this assumption in the README.
-- Week 8: features as in week 5. For a segment, labels are redrawn from a logistic model fit on
-  the Reference with the `EXT_SOURCE_2` coefficient reversed and halved and the intercept
-  adjusted to keep the overall default rate (so it is concept drift, not label shift). Weeks
-  10–13: the same on fresh rows.
+- Category mix (implemented): week 4 at half strength, weeks 5–13 at full strength. Each category gets
+  its exact target count drawn from unused rows (pensioners 18.2% → 14.8% → 12.0%, Working ≈ 58%), so
+  every row keeps its own label (pure covariate shift, exercises χ²/JS tests). The numeric transforms
+  change values in place with labels unchanged (measurement/level drift) — state this in the README.
+- Week 8: features as in week 5. For the segment *age ≤ 45 and income ≤ training median* (≈26% of
+  rows), labels are redrawn from an independent LightGBM label model with `EXT_SOURCE_2`'s linear
+  coefficient reversed and halved (−0.46 → +0.23) and the intercept shifted to keep the segment's
+  default rate (concept drift, not label shift); labels outside the segment stay real. Weeks 10–13:
+  the same on fresh rows. Week 9's labels never arrive.
 - Week 9: a copy of the week-9 sample with ~12% null incomes, ages under 18, ~3% duplicated IDs
   and one numeric column turned into text.
 
@@ -124,10 +125,11 @@ sensibly:
 - **Level-based, not compounding**: each week has an absolute state of the world applied to fresh,
   non-overlapping rows; gradual drift is a ramp of levels. Each week has its own seed (base +
   week), so adding a week never changes earlier ones.
-- **Finding to state in the demo** (measured on a throwaway model in the exploration): covariate
-  drift moves PSI/KS and the mean predicted probability (8.05% → 8.42%) but barely moves AUC-PR
-  or Brier (< 0.002); concept drift does the opposite. The week-8 segment is chosen in step 9, is
-  not identical to any monitored slice, and is sized so overall AUC-PR falls ≈ 0.04.
+- **Finding to state in the demo** (measured on the real champion, `docs/decisions.md` #10):
+  income and employment drift leave AUC-PR unchanged (0.251) and the annuity shock costs only 0.013,
+  while mean predicted probability rises 0.082 → 0.088; concept drift cuts AUC-PR by ≈0.04 and AUC-ROC
+  from 0.76–0.78 to 0.72–0.74 without moving any feature. One 5,000-row week has an AUC-PR confidence
+  interval of ≈ ±0.04, so single weeks are noisy; use windows and AUC-ROC as a steadier signal.
 
 ### Retraining & recalibration (stretch phase)
 Built only after validation, drift detection and observability work end to end. Not graded by
@@ -339,7 +341,6 @@ Two deliberately different collection patterns, both demonstrated:
 
 ## Open items (confirm before/while building)
 
-- [ ] Concept-drift segment definition and size (step 9; target ≈0.04 overall AUC-PR drop).
 - [ ] Promotion gate margin, the exact label delay (one week assumed), and thresholds for the
       automated diagnosis rules (stretch phase).
 - [ ] Whether the model server reads the EC2 MLflow registry or a champion exported to S3.
@@ -354,11 +355,11 @@ Planning complete through the architecture decisions above (drift schedule simpl
 retraining/recalibration moved to a stretch phase after reviewing the assignment's actual
 requirements). A visual overview of the flow and the planned Grafana dashboard exists as a
 draft artifact; the timeline was extended to 13 weeks to fit a second retrain for concept
-drift; notebooks (EDA, retraining analysis, drift evaluation) were added to the plan. Steps 1–7
+drift; notebooks (EDA, retraining analysis, drift evaluation) were added to the plan. Steps 1–7 and 9
 are done (skeleton on Python 3.14 with uv, DVC with an S3 remote, EDA, decisions, the data split,
 contracts, staged MLflow experiments and a registered champion `credit_scoring@champion`:
 variant B + LightGBM, Platt-calibrated). The ordered
 implementation plan, with what Claude builds and what the repo owner must do, is in
 `docs/build-plan.md` (tick items off as they finish). Everything is proven locally first, then
 rerun on AWS with the same commit, data, frozen thresholds and champion; never tune on AWS.
-Next: step 8 (`training_pipeline` DAG) and step 9 (drift simulator).
+Next: step 10 (drift detection with Evidently); step 8 (`training_pipeline` DAG) is deferred until Airflow is needed.

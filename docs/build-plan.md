@@ -99,9 +99,9 @@ Ordered implementation plan for the Tech Challenge 4 project. Design decisions l
 ## Phase 3 - Drift and the monitoring loop
 
 ### 9. Drift simulator [R]
-- [ ] **You:** decide whether drift accumulates across weeks or is independent per week
+- [x] **You:** decide whether drift accumulates across weeks or is independent per week
       (open item; must be settled before writing the simulator).
-- [ ] **Claude:** cut the Production pool into 13 weekly samples, apply per-week transforms,
+- [x] **Claude:** cut the Production pool into 13 weekly samples, apply per-week transforms,
       write `week_NN.parquet` and `drift_spec.json`; seeded, DVC-tracked.
 - **Why:** creates the degradation and the ground truth. Feeds the monitoring DAG and the
   evaluation notebook. Independent of step 11, so they can be built in parallel.

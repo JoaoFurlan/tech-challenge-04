@@ -189,3 +189,45 @@ summary table of the stages; the full trial history stays local (screenshots/exp
 - The threshold is stored with the registered model as a versioned parameter next to the cost
   ratio, so the serving app returns the probability and the decision, and any change leaves a
   trace in the registry. The 5:1 ratio is an assumption a real lender would replace.
+
+## 10. Drift simulator (step 9)
+
+Code in `src/credit_drift/drift/`; run with `uv run python -m credit_drift.drift.simulate`. Output in
+`data/production/weeks/` (DVC), ground truth in `data/production/drift_spec.json` (copy in
+`docs/reports/drift_spec.json`, aggregates only). Features and labels are separate files
+(`week_NN_features.parquet`, `week_NN_labels.parquet`) because labels arrive late in production.
+
+- **Level-based schedule:** each week is an absolute state applied to fresh, non-overlapping rows.
+  Weeks 1-2 control; 3: income x0.90, employment x0.92; 4: income x0.86, employment x0.85, category mix
+  at half strength; 5-13: income x0.86, employment x0.85, annuity x1.15, full mix shift; concept drift
+  from week 8; week 9 is the corrupted batch and its labels never arrive. Each week has its own seed
+  (base + week); adding a week never changes earlier ones (tested).
+- **Numeric drift** changes values in place with labels untouched (measurement/level drift); the
+  365243 sentinel in `DAYS_EMPLOYED` is a code and is left alone.
+- **Category-mix drift** (`NAME_INCOME_TYPE`): each category gets its exact target count, drawn from the
+  unused rows, so rows keep their labels (pure covariate shift). Pensioners go from 18.2% to 14.8% (week
+  4) and 12.0% (weeks 5-13), Working from 51.6% to about 58%. A first version used weighted draws from the
+  shrinking pool and let the mix creep back (pensioners 15.9% by week 13); exact counts fixed that.
+- **Concept drift** (weeks 8 and 10-13): for the segment *age <= 45 and income <= the training median
+  (144,000)*, defined on the original features (about 26% of rows, 1,369 of 5,000 in week 8), labels are
+  redrawn from a label model with EXT_SOURCE_2's linear coefficient changed from -0.46 to +0.23 (reversed
+  and halved); the intercept is shifted so the segment keeps its model-implied default rate (concept
+  drift, not label shift). Labels outside the segment stay real. Segment and size were chosen by
+  experiment so overall AUC-PR falls by about 0.04 against the week-5 level.
+- **Label model:** an independent LightGBM (different seed and settings), Platt-calibrated on the
+  calibration part. Measured on the champion: redrawing all labels from it moves AUC-PR by +0.002
+  (0.2526 vs 0.2509 real), so it adds no confound. Rejected: a logistic regression (redrawing alone
+  cuts the champion's AUC-PR from 0.238 to as low as 0.162) and the champion's own probabilities
+  (circular, flattering: 0.2589).
+- **Measured effect on the champion** (whole pool, labels unchanged for covariate weeks): weeks 3-4
+  (income, employment) leave AUC-PR at 0.251; the week-5 annuity shock lowers it to 0.238 (-0.013) and
+  AUC-ROC from 0.766 to 0.756. **This corrects the earlier "< 0.002" estimate**, which came from a
+  throwaway numeric-only model; the real champion uses annuity ratios, so a constant annuity shift moves
+  rows across its splits. Mean predicted default rate rises from 0.082 to about 0.088 while the observed
+  rate stays near 0.083.
+- **Simulated weeks 8-13 on the champion:** AUC-PR averages 0.194 (weeks 1-7 about 0.26) and AUC-ROC
+  falls from 0.76-0.78 to 0.72-0.74.
+- **Noise to plan for:** one 5,000-row week has an AUC-PR confidence interval of about +-0.04, so a
+  single week cannot reliably show a 0.04 drop (AUC-ROC is steadier). This is why slice metrics use a
+  two-week window and why detector thresholds must be tuned offline on more than one simulation.
+

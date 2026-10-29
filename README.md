@@ -97,6 +97,37 @@ vezes a média) e concentram 34% de todos os inadimplentes. Com o limiar de deci
 precisão. O desempenho é moderado de propósito: usamos só a tabela principal do Home Credit, sem
 as demais tabelas de histórico, porque o foco do projeto é o monitoramento em torno do modelo.
 
+## Simulação de drift
+
+Os dados de produção (100 mil linhas separadas do treino) são cortados em **13 semanas** de 5.000
+clientes, sem sobreposição, e um estado de "mundo" é aplicado a cada semana
+(`uv run python -m credit_drift.drift.simulate`; decisões em `docs/decisions.md`, seção 10). O tempo é
+sintético: os dados não têm datas.
+
+| Semanas | O que acontece |
+|---|---|
+| 1–2 | controle: nenhum drift (os detectores **não** devem disparar) |
+| 3–4 | drift gradual de covariáveis: renda ×0,90 → ×0,86 e tempo de emprego ×0,92 → ×0,85; a mistura de tipos de renda começa a mudar |
+| 5 | choque abrupto: parcela ×1,15 (a razão parcela/renda dispara) e mistura completa (pensionistas de 18% para 12%) |
+| 6–7 | novo normal: o regime da semana 5 continua |
+| 8, 10–13 | **drift de conceito**: para clientes até 45 anos com renda abaixo da mediana (≈26%), a relação de `EXT_SOURCE_2` com a inadimplência é invertida e reduzida à metade; nenhuma variável muda |
+| 9 | lote corrompido (12% de rendas nulas, idades < 18, IDs duplicados, coluna numérica como texto): o contrato bloqueia o lote e os rótulos nunca chegam |
+
+Cada semana gera um arquivo de *features* e outro de *rótulos* (em produção os rótulos chegam depois),
+e `drift_spec.json` registra o que foi injetado: é o gabarito usado **apenas offline**
+(`docs/reports/drift_spec.json`).
+
+O que isso faz com o modelo campeão (resultado medido, não suposto):
+
+- O drift de covariáveis mexe nas distribuições e na probabilidade média prevista (de 8,2% para
+  cerca de 8,8%, enquanto a inadimplência observada fica perto de 8,3%), mas quase não muda o AUC-PR
+  (0,251 → 0,238 só com o choque da parcela).
+- O drift de conceito faz o contrário: nenhuma distribuição se mexe, mas o AUC-PR cai cerca de 0,04
+  e o AUC-ROC vai de 0,76–0,78 para 0,72–0,74. PSI e KS **não** veem isso; só o desempenho (com
+  rótulos) mostra.
+- Uma única semana de 5.000 clientes é ruidosa (intervalo de confiança do AUC-PR de ±0,04), por isso
+  as métricas por fatia usam janelas de duas semanas.
+
 ## Contratos de dados
 
 Toda carga de dados passa por dois validadores com papéis diferentes (regras em
