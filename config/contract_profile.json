@@ -1,0 +1,661 @@
+{
+ "n_rows": 145257,
+ "columns": {
+  "SK_ID_CURR": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "NAME_CONTRACT_TYPE": {
+   "kind": "categorical",
+   "null_share": 0.0,
+   "categories": [
+    "Cash loans",
+    "Revolving loans"
+   ]
+  },
+  "CODE_GENDER": {
+   "kind": "categorical",
+   "null_share": 0.0,
+   "categories": [
+    "F",
+    "M",
+    "XNA"
+   ]
+  },
+  "FLAG_OWN_CAR": {
+   "kind": "categorical",
+   "null_share": 0.0,
+   "categories": [
+    "N",
+    "Y"
+   ]
+  },
+  "FLAG_OWN_REALTY": {
+   "kind": "categorical",
+   "null_share": 0.0,
+   "categories": [
+    "N",
+    "Y"
+   ]
+  },
+  "CNT_CHILDREN": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "AMT_INCOME_TOTAL": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "AMT_CREDIT": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "AMT_ANNUITY": {
+   "kind": "numeric",
+   "null_share": 2.8e-05
+  },
+  "AMT_GOODS_PRICE": {
+   "kind": "numeric",
+   "null_share": 0.000895
+  },
+  "NAME_TYPE_SUITE": {
+   "kind": "categorical",
+   "null_share": 0.004268,
+   "categories": [
+    "Children",
+    "Family",
+    "Group of people",
+    "Other_A",
+    "Other_B",
+    "Spouse, partner",
+    "Unaccompanied"
+   ]
+  },
+  "NAME_INCOME_TYPE": {
+   "kind": "categorical",
+   "null_share": 0.0,
+   "categories": [
+    "Businessman",
+    "Commercial associate",
+    "Maternity leave",
+    "Pensioner",
+    "State servant",
+    "Student",
+    "Unemployed",
+    "Working"
+   ]
+  },
+  "NAME_EDUCATION_TYPE": {
+   "kind": "categorical",
+   "null_share": 0.0,
+   "categories": [
+    "Academic degree",
+    "Higher education",
+    "Incomplete higher",
+    "Lower secondary",
+    "Secondary / secondary special"
+   ]
+  },
+  "NAME_FAMILY_STATUS": {
+   "kind": "categorical",
+   "null_share": 0.0,
+   "categories": [
+    "Civil marriage",
+    "Married",
+    "Separated",
+    "Single / not married",
+    "Unknown",
+    "Widow"
+   ]
+  },
+  "NAME_HOUSING_TYPE": {
+   "kind": "categorical",
+   "null_share": 0.0,
+   "categories": [
+    "Co-op apartment",
+    "House / apartment",
+    "Municipal apartment",
+    "Office apartment",
+    "Rented apartment",
+    "With parents"
+   ]
+  },
+  "REGION_POPULATION_RELATIVE": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "DAYS_BIRTH": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "DAYS_EMPLOYED": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "DAYS_REGISTRATION": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "DAYS_ID_PUBLISH": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "OWN_CAR_AGE": {
+   "kind": "numeric",
+   "null_share": 0.658887
+  },
+  "FLAG_MOBIL": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_EMP_PHONE": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_WORK_PHONE": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_CONT_MOBILE": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_PHONE": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_EMAIL": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "OCCUPATION_TYPE": {
+   "kind": "categorical",
+   "null_share": 0.313596,
+   "categories": [
+    "Accountants",
+    "Cleaning staff",
+    "Cooking staff",
+    "Core staff",
+    "Drivers",
+    "HR staff",
+    "High skill tech staff",
+    "IT staff",
+    "Laborers",
+    "Low-skill Laborers",
+    "Managers",
+    "Medicine staff",
+    "Private service staff",
+    "Realty agents",
+    "Sales staff",
+    "Secretaries",
+    "Security staff",
+    "Waiters/barmen staff"
+   ]
+  },
+  "CNT_FAM_MEMBERS": {
+   "kind": "numeric",
+   "null_share": 7e-06
+  },
+  "REGION_RATING_CLIENT": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "REGION_RATING_CLIENT_W_CITY": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "WEEKDAY_APPR_PROCESS_START": {
+   "kind": "categorical",
+   "null_share": 0.0,
+   "categories": [
+    "FRIDAY",
+    "MONDAY",
+    "SATURDAY",
+    "SUNDAY",
+    "THURSDAY",
+    "TUESDAY",
+    "WEDNESDAY"
+   ]
+  },
+  "HOUR_APPR_PROCESS_START": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "REG_REGION_NOT_LIVE_REGION": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "REG_REGION_NOT_WORK_REGION": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "LIVE_REGION_NOT_WORK_REGION": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "REG_CITY_NOT_LIVE_CITY": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "REG_CITY_NOT_WORK_CITY": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "LIVE_CITY_NOT_WORK_CITY": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "ORGANIZATION_TYPE": {
+   "kind": "categorical",
+   "null_share": 0.0,
+   "categories": [
+    "Advertising",
+    "Agriculture",
+    "Bank",
+    "Business Entity Type 1",
+    "Business Entity Type 2",
+    "Business Entity Type 3",
+    "Cleaning",
+    "Construction",
+    "Culture",
+    "Electricity",
+    "Emergency",
+    "Government",
+    "Hotel",
+    "Housing",
+    "Industry: type 1",
+    "Industry: type 10",
+    "Industry: type 11",
+    "Industry: type 12",
+    "Industry: type 13",
+    "Industry: type 2",
+    "Industry: type 3",
+    "Industry: type 4",
+    "Industry: type 5",
+    "Industry: type 6",
+    "Industry: type 7",
+    "Industry: type 8",
+    "Industry: type 9",
+    "Insurance",
+    "Kindergarten",
+    "Legal Services",
+    "Medicine",
+    "Military",
+    "Mobile",
+    "Other",
+    "Police",
+    "Postal",
+    "Realtor",
+    "Religion",
+    "Restaurant",
+    "School",
+    "Security",
+    "Security Ministries",
+    "Self-employed",
+    "Services",
+    "Telecom",
+    "Trade: type 1",
+    "Trade: type 2",
+    "Trade: type 3",
+    "Trade: type 4",
+    "Trade: type 5",
+    "Trade: type 6",
+    "Trade: type 7",
+    "Transport: type 1",
+    "Transport: type 2",
+    "Transport: type 3",
+    "Transport: type 4",
+    "University",
+    "XNA"
+   ]
+  },
+  "EXT_SOURCE_1": {
+   "kind": "numeric",
+   "null_share": 0.563346
+  },
+  "EXT_SOURCE_2": {
+   "kind": "numeric",
+   "null_share": 0.002141
+  },
+  "EXT_SOURCE_3": {
+   "kind": "numeric",
+   "null_share": 0.198944
+  },
+  "APARTMENTS_AVG": {
+   "kind": "numeric",
+   "null_share": 0.508402
+  },
+  "BASEMENTAREA_AVG": {
+   "kind": "numeric",
+   "null_share": 0.58612
+  },
+  "YEARS_BEGINEXPLUATATION_AVG": {
+   "kind": "numeric",
+   "null_share": 0.488555
+  },
+  "YEARS_BUILD_AVG": {
+   "kind": "numeric",
+   "null_share": 0.66615
+  },
+  "COMMONAREA_AVG": {
+   "kind": "numeric",
+   "null_share": 0.699842
+  },
+  "ELEVATORS_AVG": {
+   "kind": "numeric",
+   "null_share": 0.533682
+  },
+  "ENTRANCES_AVG": {
+   "kind": "numeric",
+   "null_share": 0.50463
+  },
+  "FLOORSMAX_AVG": {
+   "kind": "numeric",
+   "null_share": 0.498819
+  },
+  "FLOORSMIN_AVG": {
+   "kind": "numeric",
+   "null_share": 0.679258
+  },
+  "LANDAREA_AVG": {
+   "kind": "numeric",
+   "null_share": 0.59434
+  },
+  "LIVINGAPARTMENTS_AVG": {
+   "kind": "numeric",
+   "null_share": 0.684249
+  },
+  "LIVINGAREA_AVG": {
+   "kind": "numeric",
+   "null_share": 0.50295
+  },
+  "NONLIVINGAPARTMENTS_AVG": {
+   "kind": "numeric",
+   "null_share": 0.694996
+  },
+  "NONLIVINGAREA_AVG": {
+   "kind": "numeric",
+   "null_share": 0.553316
+  },
+  "APARTMENTS_MODE": {
+   "kind": "numeric",
+   "null_share": 0.508402
+  },
+  "BASEMENTAREA_MODE": {
+   "kind": "numeric",
+   "null_share": 0.58612
+  },
+  "YEARS_BEGINEXPLUATATION_MODE": {
+   "kind": "numeric",
+   "null_share": 0.488555
+  },
+  "YEARS_BUILD_MODE": {
+   "kind": "numeric",
+   "null_share": 0.66615
+  },
+  "COMMONAREA_MODE": {
+   "kind": "numeric",
+   "null_share": 0.699842
+  },
+  "ELEVATORS_MODE": {
+   "kind": "numeric",
+   "null_share": 0.533682
+  },
+  "ENTRANCES_MODE": {
+   "kind": "numeric",
+   "null_share": 0.50463
+  },
+  "FLOORSMAX_MODE": {
+   "kind": "numeric",
+   "null_share": 0.498819
+  },
+  "FLOORSMIN_MODE": {
+   "kind": "numeric",
+   "null_share": 0.679258
+  },
+  "LANDAREA_MODE": {
+   "kind": "numeric",
+   "null_share": 0.59434
+  },
+  "LIVINGAPARTMENTS_MODE": {
+   "kind": "numeric",
+   "null_share": 0.684249
+  },
+  "LIVINGAREA_MODE": {
+   "kind": "numeric",
+   "null_share": 0.50295
+  },
+  "NONLIVINGAPARTMENTS_MODE": {
+   "kind": "numeric",
+   "null_share": 0.694996
+  },
+  "NONLIVINGAREA_MODE": {
+   "kind": "numeric",
+   "null_share": 0.553316
+  },
+  "APARTMENTS_MEDI": {
+   "kind": "numeric",
+   "null_share": 0.508402
+  },
+  "BASEMENTAREA_MEDI": {
+   "kind": "numeric",
+   "null_share": 0.58612
+  },
+  "YEARS_BEGINEXPLUATATION_MEDI": {
+   "kind": "numeric",
+   "null_share": 0.488555
+  },
+  "YEARS_BUILD_MEDI": {
+   "kind": "numeric",
+   "null_share": 0.66615
+  },
+  "COMMONAREA_MEDI": {
+   "kind": "numeric",
+   "null_share": 0.699842
+  },
+  "ELEVATORS_MEDI": {
+   "kind": "numeric",
+   "null_share": 0.533682
+  },
+  "ENTRANCES_MEDI": {
+   "kind": "numeric",
+   "null_share": 0.50463
+  },
+  "FLOORSMAX_MEDI": {
+   "kind": "numeric",
+   "null_share": 0.498819
+  },
+  "FLOORSMIN_MEDI": {
+   "kind": "numeric",
+   "null_share": 0.679258
+  },
+  "LANDAREA_MEDI": {
+   "kind": "numeric",
+   "null_share": 0.59434
+  },
+  "LIVINGAPARTMENTS_MEDI": {
+   "kind": "numeric",
+   "null_share": 0.684249
+  },
+  "LIVINGAREA_MEDI": {
+   "kind": "numeric",
+   "null_share": 0.50295
+  },
+  "NONLIVINGAPARTMENTS_MEDI": {
+   "kind": "numeric",
+   "null_share": 0.694996
+  },
+  "NONLIVINGAREA_MEDI": {
+   "kind": "numeric",
+   "null_share": 0.553316
+  },
+  "FONDKAPREMONT_MODE": {
+   "kind": "categorical",
+   "null_share": 0.684745,
+   "categories": [
+    "not specified",
+    "org spec account",
+    "reg oper account",
+    "reg oper spec account"
+   ]
+  },
+  "HOUSETYPE_MODE": {
+   "kind": "categorical",
+   "null_share": 0.502551,
+   "categories": [
+    "block of flats",
+    "specific housing",
+    "terraced house"
+   ]
+  },
+  "TOTALAREA_MODE": {
+   "kind": "numeric",
+   "null_share": 0.483564
+  },
+  "WALLSMATERIAL_MODE": {
+   "kind": "categorical",
+   "null_share": 0.509635,
+   "categories": [
+    "Block",
+    "Mixed",
+    "Monolithic",
+    "Others",
+    "Panel",
+    "Stone, brick",
+    "Wooden"
+   ]
+  },
+  "EMERGENCYSTATE_MODE": {
+   "kind": "categorical",
+   "null_share": 0.474724,
+   "categories": [
+    "No",
+    "Yes"
+   ]
+  },
+  "OBS_30_CNT_SOCIAL_CIRCLE": {
+   "kind": "numeric",
+   "null_share": 0.003311
+  },
+  "DEF_30_CNT_SOCIAL_CIRCLE": {
+   "kind": "numeric",
+   "null_share": 0.003311
+  },
+  "OBS_60_CNT_SOCIAL_CIRCLE": {
+   "kind": "numeric",
+   "null_share": 0.003311
+  },
+  "DEF_60_CNT_SOCIAL_CIRCLE": {
+   "kind": "numeric",
+   "null_share": 0.003311
+  },
+  "DAYS_LAST_PHONE_CHANGE": {
+   "kind": "numeric",
+   "null_share": 7e-06
+  },
+  "FLAG_DOCUMENT_2": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_DOCUMENT_3": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_DOCUMENT_4": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_DOCUMENT_5": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_DOCUMENT_6": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_DOCUMENT_7": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_DOCUMENT_8": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_DOCUMENT_9": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_DOCUMENT_10": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_DOCUMENT_11": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_DOCUMENT_12": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_DOCUMENT_13": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_DOCUMENT_14": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_DOCUMENT_15": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_DOCUMENT_16": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_DOCUMENT_17": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_DOCUMENT_18": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_DOCUMENT_19": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_DOCUMENT_20": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "FLAG_DOCUMENT_21": {
+   "kind": "numeric",
+   "null_share": 0.0
+  },
+  "AMT_REQ_CREDIT_BUREAU_HOUR": {
+   "kind": "numeric",
+   "null_share": 0.135002
+  },
+  "AMT_REQ_CREDIT_BUREAU_DAY": {
+   "kind": "numeric",
+   "null_share": 0.135002
+  },
+  "AMT_REQ_CREDIT_BUREAU_WEEK": {
+   "kind": "numeric",
+   "null_share": 0.135002
+  },
+  "AMT_REQ_CREDIT_BUREAU_MON": {
+   "kind": "numeric",
+   "null_share": 0.135002
+  },
+  "AMT_REQ_CREDIT_BUREAU_QRT": {
+   "kind": "numeric",
+   "null_share": 0.135002
+  },
+  "AMT_REQ_CREDIT_BUREAU_YEAR": {
+   "kind": "numeric",
+   "null_share": 0.135002
+  }
+ }
+}

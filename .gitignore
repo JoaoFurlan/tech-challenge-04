@@ -16,3 +16,6 @@ __pycache__/
 .env
 mlruns/
 mlartifacts/
+
+# Great Expectations file context (suites are built from code, Data Docs exported to docs/reports/)
+/gx/
