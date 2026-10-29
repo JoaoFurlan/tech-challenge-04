@@ -11,8 +11,6 @@ __pycache__/
 
 # Data is versioned by DVC, never committed (LGPD: no raw customer rows in git)
 /data/raw/*.csv
-/data/reference/
-/data/production/
 
 # Local secrets and runtime state
 .env

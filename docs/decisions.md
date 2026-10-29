@@ -101,3 +101,25 @@ Level-based, not compounding: each week has an absolute state of the world (for 
 x0.86 from week 4"), applied to fresh, non-overlapping rows. Gradual drift is a ramp of levels and
 persistence is the same level repeated. Each week uses its own seed (base seed + week), so
 adding a week never changes earlier ones, and `drift_spec.json` stays a simple table.
+
+## 7. Train / calibration / test split (step 4, approved)
+
+- **Pools:** random, seeded (42), disjoint by `SK_ID_CURR`. Reference 207,511 rows; Production pool
+  100,000 rows (13 weeks x 5,000 = 65,000 plus headroom for the resampled category-mix drift and
+  the retraining windows). Random because the data has no timestamps; the Production pool is not
+  stratified, so weekly default rates fluctuate like real ones.
+- **Reference parts**, stratified on `TARGET`: train 70% (145,257 rows), calibration 10% (20,751),
+  test 20% (41,503); default rate 8.1% in each.
+- **No fixed validation set:** tuning and feature selection use 3-fold stratified cross-validation
+  inside train (a 20k-row validation set has AUC-PR noise of about 0.005, which 9 x 30 Optuna
+  trials would overfit).
+- **Selection:** rank the 9 tuned combinations by cross-validated AUC-PR (Brier and the cost metric
+  as tie-breakers), calibrate the winner on the calibration part, evaluate on test once. Test never
+  chooses a model.
+- **Production weeks** act as the time-ordered test set. Weeks 1-2 (control) should match the test
+  score within its confidence interval. Features and labels are stored in separate files
+  (`week_NN_features.parquet`, `week_NN_labels.parquet`), as in production where labels arrive late.
+- **Baselines:** the champion's train part is the PSI baseline; its test score is the performance
+  baseline monitoring compares against.
+- **Code:** `src/credit_drift/split.py`; outputs in `data/reference/` and `data/production/`
+  (DVC-tracked, pushed to S3).

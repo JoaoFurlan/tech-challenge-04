@@ -66,7 +66,7 @@ Ordered implementation plan for the Tech Challenge 4 project. Design decisions l
   done later, when the drift simulator is designed (step 9), not in the exploration.
 
 ### 4. Split Reference and Production pools [R]
-- [ ] **Claude:** seeded, disjoint split; Reference (training) and Production pool; DVC-tracked.
+- [x] **Claude:** seeded, disjoint split; Reference (training) and Production pool; DVC-tracked.
 - **Why:** the rubric requires separation; the fixed seed makes it reproducible. The Reference
   trains the model; the Production pool becomes the 13 weekly batches.
 

@@ -27,8 +27,9 @@ Não é necessária nenhuma conta ou credencial AWS.
    no Kaggle (é preciso aceitar as regras da competição) e salve-os em `data/raw/`.
 2. Confirme a integridade: `uv run dvc status`. O DVC compara o hash dos arquivos com os
    ponteiros versionados (`data/raw/*.dvc`) e deve informar que os dados estão atualizados.
-3. Todo o restante (pool de referência, lotes semanais com drift simulado) é **regenerado pelo
-   código** a partir de sementes fixas; não há dados derivados para baixar.
+3. Todo o restante (partes de referência, lotes semanais com drift simulado) é **regenerado pelo
+   código** a partir de sementes fixas; não há dados derivados para baixar. Por exemplo, a divisão
+   Referência/Produção: `uv run python -m credit_drift.split`.
 
 ### Opção B — com um bucket S3 próprio
 
