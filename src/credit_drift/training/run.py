@@ -23,6 +23,7 @@ import pandas as pd
 
 from credit_drift.split import DATA_DIR, REFERENCE_DIR
 from credit_drift.training.champion import MODEL_NAME, pick_champion, select_and_register, shortlist
+from credit_drift.training.describe import NOTE_TAG, describe_run
 from credit_drift.training.features import VARIANTS
 from credit_drift.training.search import (
     DEFAULT_PARAMS,
@@ -75,9 +76,11 @@ class Context:
         return json.loads(path.read_text())
 
     def log_run(self, name: str, stage: str, variant: str, family: str, trial: int, params: dict,
-                metrics: dict, kind: str, pruned: bool = False) -> None:
+                metrics: dict, kind: str, pruned: bool = False, n_trials: int | None = None) -> None:
         with mlflow.start_run(run_name=name):
-            mlflow.set_tags({"stage": stage, "kind": kind, "pruned": str(pruned).lower()})
+            note = describe_run(stage=stage, kind=kind, variant=variant, family=family, trial=trial,
+                                params={f"hp_{k}": v for k, v in params.items()}, pruned=pruned, n_trials=n_trials)
+            mlflow.set_tags({"stage": stage, "kind": kind, "pruned": str(pruned).lower(), NOTE_TAG: note})
             mlflow.log_input(self.dataset, context="training")
             mlflow.log_params({"model": family, "feature_variant": variant, "trial": trial, "seed": SEED})
             mlflow.log_params({f"hp_{k}": v for k, v in params.items()})
@@ -135,9 +138,9 @@ def run_tune(ctx: Context, args) -> None:
         n_trials = 3 if ctx.quick else (args.trials or TRIALS[family])
         print(f"tuning {variant} / {family}: {n_trials} trials", flush=True)
 
-        def log_trial(number: int, params: dict, metrics: dict, pruned: bool, family=family) -> None:
+        def log_trial(number: int, params: dict, metrics: dict, pruned: bool, family=family, n_trials=n_trials) -> None:
             ctx.log_run(f"{family} trial {number:02d}", "hyperparameter_tuning", variant, family, number + 1,
-                        params, metrics, "trial", pruned)
+                        params, metrics, "trial", pruned, n_trials)
 
         study = tune_family(ctx.cache, variant, family, n_trials, on_trial=log_trial)
         # Re-evaluate the best settings for out-of-fold metrics, then refit on all training rows.

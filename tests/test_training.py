@@ -104,3 +104,14 @@ def test_calibrated_model_returns_valid_probabilities(method):
     p = model.predict_proba(raw)[:, 1]
     assert p.min() >= 0 and p.max() <= 1
     assert abs(p.mean() - y.mean()) < 0.01  # calibration pulls the mean prediction to the observed rate
+
+
+def test_run_descriptions_explain_the_features_and_flag_pruned_trials():
+    from credit_drift.training.describe import describe_run
+
+    trial = describe_run(stage="hyperparameter_tuning", kind="trial", variant="B", family="lightgbm", trial=7,
+                         params={"hp_num_leaves": 31}, pruned=True, n_trials=25)
+    assert "variant B" in trial and "ratios" in trial and "trial 7 of 25" in trial
+    assert "Pruned" in trial and "num_leaves=31" in trial
+    baseline = describe_run(stage="feature_engineering", kind="candidate", variant="A", family="logreg", trial=0, params={})
+    assert "untouched" in baseline and "standardised" in baseline and "Pruned" not in baseline

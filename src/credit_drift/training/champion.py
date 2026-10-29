@@ -12,6 +12,7 @@ from sklearn.model_selection import KFold
 
 import credit_drift
 from credit_drift.data import TARGET
+from credit_drift.training.describe import NOTE_TAG, describe_champion
 from credit_drift.training.metrics import (
     COST_RATIOS,
     DEFAULT_RATIO,
@@ -95,6 +96,9 @@ def select_and_register(results_dir: Path, reference_dir: Path, tracking_experim
 
     mlflow.set_experiment(tracking_experiment)
     with mlflow.start_run(run_name="champion_selection") as run:
+        mlflow.set_tag(NOTE_TAG, describe_champion(
+            f"{champion['variant']}/{champion['family']}", method, DEFAULT_RATIO,
+            ", ".join(f"{r['variant']}/{r['family']}" for r in short)))
         mlflow.log_params({
             "champion_cell": f"{champion['variant']}/{champion['family']}", "calibration": method,
             "cost_ratio": DEFAULT_RATIO, "shortlist": ",".join(f"{r['variant']}/{r['family']}" for r in short)})
