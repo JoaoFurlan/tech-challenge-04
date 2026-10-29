@@ -125,10 +125,25 @@ def test_performance_alerts_use_the_drop_against_the_champions_baseline():
     assert rules == ["performance_drop", "calibration_gap", "slice_degradation"]
 
 
-def test_a_slice_is_flagged_only_when_it_falls_clearly_below_the_overall_drop():
-    baseline = {"A": {"auc_pr": 0.30}, "B": {"auc_pr": 0.30}, "C": {"auc_pr": 0.30}, "D": {"auc_pr": None}}
-    now = {"A": {"auc_pr": 0.20}, "B": {"auc_pr": 0.26}, "C": {"auc_pr": float("nan")}, "D": {"auc_pr": 0.1}}
-    assert alerts.flagged_slices(now, baseline, overall_drop=0.04, t=T) == ["A"]  # A: 0.10 >= 0.04 + 0.03; B: 0.04 is not
+def test_a_slice_is_flagged_only_when_it_falls_clearly_below_its_baseline():
+    baseline = {n: {"auc_pr": 0.30} for n in "ABCDEF"} | {"G": {"auc_pr": None}}
+    now = {
+        "A": {"auc_pr": 0.20, "ci_high": 0.25},                  # 0.10 below, interval clearly below: flagged
+        "B": {"auc_pr": 0.26, "ci_high": 0.30},                  # only 0.04 below (needs 0.04 + 0.03)
+        "C": {"auc_pr": float("nan"), "ci_high": float("nan")},  # too few defaulters: never flagged
+        "D": {"auc_pr": 0.20, "ci_high": 0.31},                  # a big drop, but the interval still reaches baseline
+        "E": {"auc_pr": 0.20, "ci_high": float("nan")},          # no interval: judged on the drop alone
+        "F": {"auc_pr": 0.21, "ci_high": 0.25},                  # also below, but see the second call
+        "G": {"auc_pr": 0.10, "ci_high": 0.12},                  # no baseline to compare with
+    }
+    assert alerts.flagged_slices(now, baseline, overall_drop=0.04, t=T) == ["A", "E", "F"]
+
+
+def test_a_good_week_never_makes_slices_look_degraded():
+    """The control-week false alarm: the whole population improved, so slices that improved less are not degraded."""
+    baseline = {"A": {"auc_pr": 0.30}}
+    assert alerts.flagged_slices({"A": {"auc_pr": 0.29, "ci_high": 0.33}}, baseline, overall_drop=-0.057, t=T) == []
+    assert alerts.flagged_slices({"A": {"auc_pr": 0.25, "ci_high": 0.28}}, baseline, overall_drop=-0.057, t=T) == ["A"]
 
 
 # ---------------------------------------------------------------- week-over-week signals and the diagnosis table

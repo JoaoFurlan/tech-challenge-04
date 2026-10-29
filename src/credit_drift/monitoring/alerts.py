@@ -65,14 +65,21 @@ def performance_alerts(perf: dict, baseline: dict, flagged_slices: list[str], t:
 
 
 def flagged_slices(current: dict, baseline: dict, overall_drop: float, t: dict) -> list[str]:
-    """Slices whose AUC-PR dropped by clearly more than the overall drop (the slice scan; noise-guarded by the
-    minimum of defaulters inside `slice_metrics`)."""
+    """Slices that fell clearly below their own baseline, beyond whatever the whole population lost.
+
+    Two guards against noise, since a slice holds only a thousand rows or so and 14 slices are scanned:
+    the drop must exceed the overall drop (floored at zero, so a good week never makes a slice look bad) by
+    `extra_drop`, and the slice's bootstrap interval must sit entirely below the baseline-minus-overall level.
+    """
+    margin = max(overall_drop, 0.0)
     flagged = []
     for name, now in current.items():
         base = baseline.get(name, {}).get("auc_pr")
         if base is None or pd.isna(now["auc_pr"]) or pd.isna(base):
             continue
-        if (base - now["auc_pr"]) >= overall_drop + t["slices"]["extra_drop"]:
+        ci_high = now.get("ci_high")
+        clearly_below = ci_high is None or pd.isna(ci_high) or ci_high < base - margin
+        if (base - now["auc_pr"]) >= margin + t["slices"]["extra_drop"] and clearly_below:
             flagged.append(name)
     return flagged
 
