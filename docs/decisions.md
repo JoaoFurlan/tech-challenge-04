@@ -342,8 +342,10 @@ so a plain `docker compose up` on the laptop stays light); image `docker/Dockerf
   `model_selection` -> `hyperparameter_tuning` -> `champion` (registers the model and tags the decision threshold).
   `quick = true` is the smoke test: 10k rows, 3 trials, separate experiment and model names.
 - **Verified on the box:** a quick run went green end to end in about 2.3 minutes (contracts alone 59 s). Quick runs
-  reuse experiment names like `quick_feature_engineering`; MLflow refuses to reuse a *deleted* experiment's name, so
-  restore them (not purge) before a smoke test and delete them again afterwards.
+  reuse experiment names like `quick_feature_engineering`. MLflow refuses to reuse a *deleted* experiment's name, so
+  `activate_experiment` (`training/tracking.py`) restores a deleted `quick_*` experiment before using it, which makes the
+  smoke test repeatable after any cleanup. A deleted real experiment is never restored silently. This first failed for
+  the repo owner on a second quick run, which had been left as a documented manual step; it is now automatic and tested.
 - **Things that bit during setup:** the slim image has no Postgres drivers (`psycopg2-binary` and, for Airflow 3's async
   engine, `asyncpg`) and no `libgomp1` (LightGBM); each went into its own late Dockerfile layer so the 3 GB environment
   layer stays cached. Containers need `AIRFLOW_UID` or bind-mounted outputs end up root-owned.
