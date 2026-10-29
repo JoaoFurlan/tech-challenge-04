@@ -26,3 +26,6 @@ mlartifacts/
 # Generated drift outputs: the full set of per-week HTML reports and the monitoring tables
 /reports/
 /data/monitoring/
+
+# files that carry commits to the Linux box
+*.bundle

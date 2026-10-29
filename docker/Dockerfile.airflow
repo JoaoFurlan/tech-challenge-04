@@ -18,5 +18,9 @@ ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PROJECT_ENVIRONMENT=/opt/credit-d
 RUN uv sync --frozen --no-dev --no-default-groups --no-cache --no-install-project \
     --group training --group validation --group monitoring --python "$(which python)"
 
+# Airflow 3 also opens an async connection to its metadata database. A separate layer, after the heavy
+# environment above, so adding a driver never rebuilds that environment.
+RUN pip install --no-cache-dir asyncpg
+
 ENV PYTHONPATH=/opt/credit-drift/src
 WORKDIR /opt/airflow
