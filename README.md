@@ -59,6 +59,34 @@ implementados. O estado do MLflow (experimentos e registro de modelos) fica em u
 local e **não** é compartilhado entre máquinas: o treino é reexecutado em cada ambiente, com
 sementes fixas, a partir do que está versionado no git e no DVC.
 
+## Contratos de dados
+
+Toda carga de dados passa por dois validadores com papéis diferentes (regras em
+`src/credit_drift/contracts/`, decisões em `docs/decisions.md`):
+
+- **Pandera:** porta de entrada rápida (*fail fast*), só com as regras **bloqueantes**.
+- **Great Expectations:** suíte completa, com regras bloqueantes e **avisos**, e geração do
+  **Data Docs** (trilha de auditoria).
+
+| Severidade | Regras | Efeito |
+|---|---|---|
+| Bloqueante | colunas e tipos esperados; `SK_ID_CURR` único e não nulo; renda não nula e > 0; idade entre 18 e 100 anos; `DAYS_EMPLOYED` ≤ 0 ou o código 365243; valores de crédito positivos (parcela ≥ 0) | O lote é rejeitado e não é pontuado |
+| Aviso | renda acima de 10 milhões (tolerância de 0,1%); gênero fora de {F, M, XNA}; aumento de mais de 5 pontos na taxa de nulos de uma coluna; categorias nunca vistas; tamanho do lote | Registrado e alertado; o lote segue |
+
+Há dois contratos: o do **lote de pontuação** (sem `TARGET`) e o dos **rótulos**, aplicado quando
+eles amadurecem (`TARGET` binário, IDs únicos). Os resultados e o Data Docs registram apenas
+**contagens e percentuais**, nunca os valores que violaram a regra (LGPD).
+
+Demonstração (o treino e um lote limpo passam; um lote corrompido, com 12% de rendas nulas,
+idades abaixo de 18 anos, 3% de IDs duplicados e uma coluna numérica como texto, é rejeitado
+pelos dois validadores):
+
+```bash
+uv run python -m credit_drift.contracts.demo
+```
+
+O relatório gerado está em `docs/reports/data_docs/index.html`.
+
 ## Dados e privacidade (LGPD)
 
 O projeto trata os dados como se fossem dados reais de clientes de uma fintech, mesmo sendo um

@@ -73,7 +73,7 @@ Ordered implementation plan for the Tech Challenge 4 project. Design decisions l
 ## Phase 2 - Contracts and first model
 
 ### 5. Data contracts [R]
-- [ ] **Claude:** Pandera schema (inline gate) and Great Expectations suite (Data Docs HTML),
+- [x] **Claude:** Pandera schema (inline gate) and Great Expectations suite (Data Docs HTML),
       at least 3 strict rules, plus a corrupted batch that both reject; tests.
 - **Why:** "garbage does not enter the model" (25% of the grade). Gates the training data now
   and every weekly batch later (blocks week 9).
