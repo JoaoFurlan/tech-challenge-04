@@ -27,6 +27,7 @@ x-airflow-common: &airflow-common
     # What the DAG tasks talk to (compose network names)
     MLFLOW_TRACKING_URI: http://mlflow:5000
     MODEL_SERVER_URL: http://serving:8000
+    PUSHGATEWAY_URL: http://pushgateway:9091
   volumes:
     - ./dags:/opt/airflow/dags
     - airflow_logs:/opt/airflow/logs
@@ -145,8 +146,32 @@ services:
         condition: service_completed_successfully
     restart: ${RESTART_POLICY:-no}
 
+  # ---- Metrics (profile "monitoring"): the DAG pushes to the Pushgateway, Prometheus scrapes it and the model server ----
+  pushgateway:
+    image: prom/pushgateway:v1.11.1
+    profiles: ["monitoring"]
+    restart: ${RESTART_POLICY:-no}
+    ports:
+      - "127.0.0.1:9091:9091"
+
+  prometheus:
+    image: prom/prometheus:v3.5.1
+    profiles: ["monitoring"]
+    restart: ${RESTART_POLICY:-no}
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=30d
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheusdata:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      - pushgateway
+
 volumes:
   pgdata:
   mlartifacts:
   airflowdb:
   airflow_logs:
+  prometheusdata:
