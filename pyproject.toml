@@ -16,6 +16,7 @@ dev = ["pytest", "ruff", "dvc[s3]", "matplotlib", "jupyterlab", "ipykernel"]
 training = ["pyarrow", "mlflow", "optuna", "xgboost", "lightgbm"]
 validation = ["pandera", "great-expectations"]
 monitoring = ["pyarrow", "evidently", "prometheus-client", "requests"]
+mlflow-server = ["mlflow", "psycopg2-binary"]
 serving = ["fastapi", "uvicorn", "mlflow-skinny", "prometheus-client"]
 
 [tool.uv]

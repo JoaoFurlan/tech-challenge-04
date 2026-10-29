@@ -123,3 +123,31 @@ adding a week never changes earlier ones, and `drift_spec.json` stays a simple t
   baseline monitoring compares against.
 - **Code:** `src/credit_drift/split.py`; outputs in `data/reference/` and `data/production/`
   (DVC-tracked, pushed to S3).
+
+## 8. Model selection and tuning (step 6, approved)
+
+- **Families:** logistic regression, LightGBM, XGBoost (3 variants x 3 families = 9 cells). Deep
+  learning is out: on tabular data of this size boosted trees match or beat it and are easier to
+  explain (LGPD art. 20, to be checked in the README). Random forest dropped; CatBoost is an
+  optional fourth family if time allows.
+- **Selection rule:** (1) rank the 9 tuned cells by cross-validated AUC-PR; (2) shortlist every
+  cell within 1 standard error of the best; (3) pick the shortlist cell with the lowest expected
+  cost, `min_t [C_FN*pi*(1-TPR(t)) + C_FP*(1-pi)*FPR(t)]` on out-of-fold predictions;
+  (4) Brier is a sanity gate, not a ranking term: the calibrated champion must beat the
+  constant-prior predictor (pi*(1-pi) = 0.074).
+- **Cost ratio:** C_FN = 5 x C_FP, an assumption (a real lender would use its own figures);
+  rankings are also reported at 3:1 and 10:1.
+- **Search spaces** (Optuna TPE, seed 42, median pruner after the first fold; objective = mean
+  3-fold AUC-PR on train, early stopping on log-loss inside each fold):
+  - logistic regression: `C` log-uniform 1e-4..10, L2, no class weights, standardised inputs; 12 trials.
+  - LightGBM: learning rate (log 0.01-0.2), leaves 15-127, min child samples 20-200, feature
+    fraction 0.5-1, bagging fraction 0.5-1, L1/L2 (log 1e-3..10); up to 1,000 trees; 25 trials.
+  - XGBoost: learning rate (log 0.01-0.2), depth 3-8, min child weight (log 1-50), subsample 0.5-1,
+    column sample 0.5-1, lambda (log 0.01-20), gamma 0-5; `hist`; up to 1,000 trees; 25 trials.
+- No class weights anywhere: they distort the probabilities that calibration and Brier rely on.
+- **MLflow:** one parent run per cell, one nested run per trial, dataset hash logged on every
+  run, only the champion registered. Trials log params and metrics explicitly instead of
+  `autolog()`, which would store hundreds of per-fold model artifacts.
+- **Implementation note:** preprocessing does not depend on hyperparameters, so it is fitted
+  once per fold and cached; each trial only fits the estimator. Variant C's feature selection is
+  part of that per-fold preprocessing, so it never sees validation rows.

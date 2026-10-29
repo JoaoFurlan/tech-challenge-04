@@ -1,0 +1,19 @@
+# MLflow tracking server + model registry. Multi-stage and slim: only the server group is installed.
+FROM python:3.14-slim AS build
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+WORKDIR /app
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+
+COPY pyproject.toml uv.lock README.md ./
+RUN uv sync --frozen --no-dev --no-default-groups --group mlflow-server --no-install-project
+
+FROM python:3.14-slim
+
+WORKDIR /app
+COPY --from=build /app/.venv /app/.venv
+ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1
+EXPOSE 5000
+# Artifacts are proxied through the server (clients need no filesystem or S3 access of their own);
+# the destination becomes an S3 URI on AWS.
+CMD ["sh", "-c", "mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri \"$MLFLOW_BACKEND_URI\" --serve-artifacts --artifacts-destination \"$MLFLOW_ARTIFACTS_DESTINATION\""]

@@ -1,6 +1,6 @@
 # Base stack. Services are added step by step (see docs/build-plan.md):
 # step 6 mlflow+postgres, step 8 airflow, step 11 serving, step 13 prometheus/pushgateway/grafana.
-# Host ports avoid 80/8000, which other local projects may use.
+# Host ports avoid 80/5432/5433/8000, which other local projects use.
 name: credit-drift
 
 services:
@@ -12,12 +12,27 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-mlflow}
     volumes:
       - pgdata:/var/lib/postgresql/data
-    ports:
-      - "127.0.0.1:5433:5432"
+    # No host port: only other services on the compose network talk to the database.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mlops}"]
       interval: 5s
       retries: 10
 
+  mlflow:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mlflow
+    environment:
+      MLFLOW_BACKEND_URI: postgresql+psycopg2://${POSTGRES_USER:-mlops}:${POSTGRES_PASSWORD:-mlops}@postgres:5432/${POSTGRES_DB:-mlflow}
+      MLFLOW_ARTIFACTS_DESTINATION: /mlartifacts
+    volumes:
+      - mlartifacts:/mlartifacts
+    ports:
+      - "127.0.0.1:5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   pgdata:
+  mlartifacts:

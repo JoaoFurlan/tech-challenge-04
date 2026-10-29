@@ -19,3 +19,6 @@ mlartifacts/
 
 # Great Expectations file context (suites are built from code, Data Docs exported to docs/reports/)
 /gx/
+
+# Training outputs (tuned cells, fitted pipelines): rebuilt by the training stage, tracked in MLflow
+/artifacts/
