@@ -22,6 +22,7 @@ from credit_drift.training.metrics import (
     summarize,
 )
 from credit_drift.training.model import CalibratedModel, apply_calibrator, fit_calibrator
+from credit_drift.training.tracking import activate_experiment
 
 MODEL_NAME = "credit_scoring"
 CALIBRATION_METHODS = ("isotonic", "platt")
@@ -104,7 +105,7 @@ def select_and_register(results_dir: Path, reference_dir: Path, tracking_experim
                       "shortlisted": r in short, "chosen": r is champion, **{f"test_{k}": v for k, v in summarize(y_test, p).items()}})
     cells_on_test = pd.DataFrame(table).sort_values("cv_auc_pr", ascending=False)
 
-    mlflow.set_experiment(tracking_experiment)
+    activate_experiment(tracking_experiment)
     with mlflow.start_run(run_name="champion_selection") as run:
         mlflow.set_tag(NOTE_TAG, describe_champion(
             f"{champion['variant']}/{champion['family']}", method, DEFAULT_RATIO,

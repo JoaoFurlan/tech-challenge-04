@@ -43,6 +43,7 @@ from credit_drift.training.search import (
     split_xy,
     tune_family,
 )
+from credit_drift.training.tracking import activate_experiment
 
 ARTIFACTS = DATA_DIR.parent / "artifacts"
 TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000")
@@ -71,7 +72,7 @@ class Context:
             train, source=str(REFERENCE_DIR / "train.parquet"), name="reference_train", targets="TARGET")
 
     def experiment(self, stage: str) -> None:
-        mlflow.set_experiment(self.prefix + EXPERIMENTS[stage])
+        activate_experiment(self.prefix + EXPERIMENTS[stage])
 
     def save(self, name: str, payload: dict) -> None:
         (self.out / f"{name}.json").write_text(json.dumps(payload, indent=1))

@@ -115,3 +115,31 @@ def test_run_descriptions_explain_the_features_and_flag_pruned_trials():
     assert "Pruned" in trial and "num_leaves=31" in trial
     baseline = describe_run(stage="feature_engineering", kind="candidate", variant="A", family="logreg", trial=0, params={})
     assert "untouched" in baseline and "standardised" in baseline and "Pruned" not in baseline
+
+
+class _Experiment:
+    def __init__(self, stage):
+        self.lifecycle_stage, self.experiment_id = stage, "7"
+
+
+@pytest.mark.parametrize(("name", "stage", "restored"), [
+    ("quick_feature_engineering", "deleted", True),   # throwaway smoke-test experiment: bring it back
+    ("quick_feature_engineering", "active", False),
+    ("feature_engineering", "deleted", False),         # a real experiment is never resurrected silently
+])
+def test_only_deleted_quick_experiments_are_restored(monkeypatch, name, stage, restored):
+    from credit_drift.training import tracking
+
+    calls = {"restore": [], "set": []}
+
+    class FakeClient:
+        def get_experiment_by_name(self, n):
+            return _Experiment(stage)
+
+        def restore_experiment(self, experiment_id):
+            calls["restore"].append(experiment_id)
+
+    monkeypatch.setattr(tracking, "MlflowClient", FakeClient)
+    monkeypatch.setattr(tracking.mlflow, "set_experiment", lambda n: calls["set"].append(n))
+    tracking.activate_experiment(name)
+    assert bool(calls["restore"]) is restored and calls["set"] == [name]
