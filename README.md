@@ -59,6 +59,44 @@ implementados. O estado do MLflow (experimentos e registro de modelos) fica em u
 local e **não** é compartilhado entre máquinas: o treino é reexecutado em cada ambiente, com
 sementes fixas, a partir do que está versionado no git e no DVC.
 
+## Experimentos e modelo campeão
+
+O treino roda em quatro etapas, cada uma um *experimento* do MLflow (`http://127.0.0.1:5000`),
+e o melhor resultado de uma etapa alimenta a seguinte (decisões em `docs/decisions.md`, seção 8):
+
+```bash
+docker compose up -d                                  # MLflow + Postgres
+uv run python -m credit_drift.training.run all        # ou: features | models | tune | select
+```
+
+| Experimento | O que compara | Resultado |
+|---|---|---|
+| `feature_engineering` | variantes A (bruta), B (engenhada), C (selecionada), cada uma com regressão logística e LightGBM | **B** vence (AUC-PR 0,2402 com LightGBM); C empata, mas custa mais; A é claramente pior (0,2333) |
+| `model_selection` | regressão logística, LightGBM e XGBoost na variante B | LightGBM e XGBoost empatam (0,2402 e 0,2404); ambos seguem para o ajuste |
+| `hyperparameter_tuning` | Optuna (TPE, 25 tentativas por família, poda de tentativas fracas) | LightGBM e XGBoost terminam empatados (AUC-PR 0,2462 na validação cruzada) |
+| `champion` | regra de seleção, calibração, avaliação única no teste, registro | **variante B + LightGBM**, calibração de Platt |
+
+**Regra de seleção** (aplicada em todas as etapas): ordenar por AUC-PR em validação cruzada de 3
+partes, manter tudo que estiver a até 1 erro-padrão do melhor e escolher o de menor **custo
+esperado** (um inadimplente não detectado custa 5 vezes mais que um alarme falso; é uma suposição
+que uma instituição real substituiria pelos seus números). O Brier é uma verificação de sanidade:
+o modelo calibrado precisa superar a previsão constante da taxa de inadimplência.
+
+**Resultado do campeão no conjunto de teste** (usado uma única vez, depois da escolha):
+
+| Métrica | Valor |
+|---|---|
+| AUC-PR | 0,246 (IC 95%: 0,232–0,261); um modelo sem poder preditivo teria 0,081 |
+| AUC-ROC | 0,760 |
+| Brier calibrado | 0,0680 (constante: 0,0745) |
+| Probabilidade média prevista | 8,09% (observada: 8,10%) |
+
+Interpretação prática: os 10% de solicitantes com maior risco têm 27,9% de inadimplência (3,4
+vezes a média) e concentram 34% de todos os inadimplentes. Com o limiar de decisão de 1/6 (custo
+5:1), o modelo sinaliza 12% dos solicitantes e captura 38,5% dos inadimplentes, com 26% de
+precisão. O desempenho é moderado de propósito: usamos só a tabela principal do Home Credit, sem
+as demais tabelas de histórico, porque o foco do projeto é o monitoramento em torno do modelo.
+
 ## Contratos de dados
 
 Toda carga de dados passa por dois validadores com papéis diferentes (regras em

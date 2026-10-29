@@ -339,8 +339,6 @@ Two deliberately different collection patterns, both demonstrated:
 
 ## Open items (confirm before/while building)
 
-- [ ] Exact Optuna search spaces per model family.
-- [ ] Exact weighting between AUC-PR / Brier / cost-weighted metric for champion selection.
 - [ ] Concept-drift segment definition and size (step 9; target ≈0.04 overall AUC-PR drop).
 - [ ] Promotion gate margin, the exact label delay (one week assumed), and thresholds for the
       automated diagnosis rules (stretch phase).
@@ -356,9 +354,11 @@ Planning complete through the architecture decisions above (drift schedule simpl
 retraining/recalibration moved to a stretch phase after reviewing the assignment's actual
 requirements). A visual overview of the flow and the planned Grafana dashboard exists as a
 draft artifact; the timeline was extended to 13 weeks to fit a second retrain for concept
-drift; notebooks (EDA, retraining analysis, drift evaluation) were added to the plan. Steps 1–3b
-are done (skeleton on Python 3.14 with uv, DVC with an S3 remote, EDA, decisions). The ordered
+drift; notebooks (EDA, retraining analysis, drift evaluation) were added to the plan. Steps 1–7
+are done (skeleton on Python 3.14 with uv, DVC with an S3 remote, EDA, decisions, the data split,
+contracts, staged MLflow experiments and a registered champion `credit_scoring@champion`:
+variant B + LightGBM, Platt-calibrated). The ordered
 implementation plan, with what Claude builds and what the repo owner must do, is in
 `docs/build-plan.md` (tick items off as they finish). Everything is proven locally first, then
 rerun on AWS with the same commit, data, frozen thresholds and champion; never tune on AWS.
-Next: step 4, the Reference/Production split.
+Next: step 8 (`training_pipeline` DAG) and step 9 (drift simulator).

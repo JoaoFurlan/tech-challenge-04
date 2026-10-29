@@ -79,7 +79,7 @@ Ordered implementation plan for the Tech Challenge 4 project. Design decisions l
   and every weekly batch later (blocks week 9).
 
 ### 6. Local MLflow + training code [R]
-- [ ] **Claude:** MLflow + Postgres in Compose; training code in `src/` run as staged
+- [x] **Claude:** MLflow + Postgres in Compose; training code in `src/` run as staged
       experiments, each feeding the next: `feature_engineering` (variants A/B/C) ->
       `model_selection` (logistic regression / LightGBM / XGBoost) -> `hyperparameter_tuning`
       (Optuna on the shortlisted families, one flat run per trial); dataset hash on every run.
@@ -88,7 +88,7 @@ Ordered implementation plan for the Tech Challenge 4 project. Design decisions l
 - **Why:** fair, reproducible comparison with lineage. Feeds step 7.
 
 ### 7. Choose and register the champion [R]
-- [ ] **Claude:** rank candidates, calibrate the winner on held-out data, register `champion` v1.
+- [x] **Claude:** rank candidates, calibrate the winner on held-out data, register `champion` v1.
 - **Why:** one agreed model is the only thing production uses. Serving loads this alias and
   every later comparison starts from it.
 
