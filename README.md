@@ -128,6 +128,32 @@ O que isso faz com o modelo campeão (resultado medido, não suposto):
 - Uma única semana de 5.000 clientes é ruidosa (intervalo de confiança do AUC-PR de ±0,04), por isso
   as métricas por fatia usam janelas de duas semanas.
 
+## Monitoramento semanal (Airflow)
+
+O DAG **`production_monitoring`** é o laço de produção: cada execução é uma semana simulada (1 a 13, em ordem), e o
+conjunto roda sozinho em cerca de 14 minutos. Por semana: o lote passa pelo **contrato de dados** (Pandera e Great
+Expectations); se for rejeitado, vai para **quarentena** e nem é pontuado; se passar, é **pontuado pelo servidor do
+modelo via HTTP** e gera o relatório de drift. Em paralelo, como os rótulos chegam com **uma semana de atraso**, a
+execução da semana N fecha a semana N-1: AUC-PR, Brier, taxa prevista contra observada e 14 fatias (janela de duas
+semanas). Em seguida vêm as **regras de alerta**, o **diagnóstico** do tipo de drift (comparando com a semana
+anterior, não com a Referência), o registro no MLflow e o envio das métricas ao Pushgateway/Prometheus.
+
+| Semanas | O que o laço disse |
+|---|---|
+| 1–2 | nenhum alerta (controle) |
+| 3 | sem alerta (PSI 0,09), mas já diagnosticado como mudança de covariáveis |
+| 4 | primeiro alerta (`data_drift_moderate`) |
+| 5 | `data_drift_major` (parcela/crédito, PSI 0,80) |
+| 6–7 | o alerta de PSI continua (a base ainda é a do treino), mas o diagnóstico é "nada": o novo normal parou de mudar |
+| 8 | quando os rótulos chegam, queda de desempenho e diagnóstico **drift de conceito** |
+| 9 | lote bloqueado pelo contrato: não pontuado, em quarentena, alerta crítico e diagnóstico "técnico" |
+| 10–11 | queda de desempenho e drift de conceito novamente |
+| 12 | queda de 0,034: **não** alertou (o limiar é 0,04 e uma única semana oscila cerca de ±0,04) |
+
+Limitações assumidas e registradas em `docs/decisions.md` (seção 14): o alerta de PSI se repete até o modelo ser
+retreinado e a base ser trocada; o ranking de fatias aponta renda baixa e idade baixa (as variáveis que definem o
+segmento injetado) por volta da semana 11, mas o limiar de sinalização é conservador e será calibrado depois.
+
 ## Orquestração (Airflow)
 
 O Airflow 3 roda no servidor Linux (`docker compose`, perfil `airflow`; interface em `http://localhost:8080` por túnel

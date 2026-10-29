@@ -50,6 +50,24 @@ Trigger a run from the UI (DAG `training_pipeline`, "Trigger with config": `{"qu
 ssh pricing-server 'cd ~/tech-challenge-04 && docker compose exec -T airflow-scheduler airflow dags trigger training_pipeline --conf "{\"quick\": true}"'
 ```
 
+## The monitoring loop
+
+The box's `.env` also needs the `monitoring` profile: `COMPOSE_PROFILES=airflow,monitoring`. That adds the Pushgateway
+(`localhost:9091` on the box) and Prometheus (`localhost:9090`); add `-L 9090:localhost:9090` to the tunnel to open it.
+
+`production_monitoring` is created paused. Unpausing it (UI toggle, or `airflow dags unpause production_monitoring`)
+runs the 13 simulated weeks in order, about 14 minutes. To rerun one week, trigger it with `{"week": 8}`. To start from
+a clean slate (what I did before the first full run):
+
+```bash
+ssh pricing-server 'cd ~/tech-challenge-04 && rm -rf artifacts/monitoring && docker compose restart pushgateway'
+# and delete the runs of the MLflow experiment `production_monitoring` (the DAG logs one run per week)
+```
+
+Outputs: `artifacts/monitoring/week_NN/*.json` and `baseline_v<version>.json` on the box, `reports/drift/week_NN_*.html`,
+the MLflow experiment `production_monitoring`, and the Prometheus series (`drift_*`, `model_*`, `slice_*`, `alert_firing`,
+`diagnosis`).
+
 ## Heavy runs
 
 Run them on the box so the laptop does not run out of memory:

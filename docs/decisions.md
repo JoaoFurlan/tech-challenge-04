@@ -354,3 +354,62 @@ so a plain `docker compose up` on the laptop stays light); image `docker/Dockerf
 - **Not yet built:** the `production_monitoring` DAG (step 12) and the stretch `retraining_pipeline` DAG, which reuses
   this DAG's tasks.
 
+## 14. The production monitoring loop (step 12)
+
+Code in `src/credit_drift/monitoring/` (`weekly.py` has one subcommand per DAG task; `slices.py`, `performance.py`,
+`alerts.py` hold the logic; `context.py` is the drift measurement shared with `run_drift.py`); DAG
+`dags/production_monitoring.py`; thresholds in `config/monitoring_thresholds.json`; Pushgateway and Prometheus added to
+the compose file under the profile `monitoring`.
+
+- **One DAG run is one simulated week.** Scheduled daily from 2026-01-01 to 2026-01-13 with catch-up, one run at a time
+  (January N = week N); the DAG is created paused, and unpausing runs all 13 weeks in order (about 65 s each, 14
+  minutes in total). A `week` parameter reruns one week by hand.
+- **Tasks:** `gate` (Pandera + Great Expectations) -> `choose_path` -> `score_batch` (through the model server over HTTP)
+  -> `drift_report`; or `quarantine_batch` for a rejected batch. In parallel `label_performance` finishes week N-1.
+  Then `evaluate_alerts` -> `log_mlflow` -> `push_metrics`. A rejected batch still ends the run and still alerts.
+- **Steps talk through files** in `artifacts/monitoring/week_NN/` (gate, score, drift, performance, alerts,
+  diagnosis), so any step can be rerun alone and a failed week can be inspected after the fact.
+- **Label delay:** run N backfills week N-1: AUC-PR with a bootstrap interval, AUC-ROC, Brier, observed versus predicted
+  rate, flag rate, cost at the decision threshold, and the 14 slices over a two-week window (fixed cut points from the
+  champion's training window). The champion's own baseline (overall and per slice, on the untouched Reference test
+  part) is computed once per version into `baseline_v<version>.json`. Comparison models (aliases `baseline`,
+  `challenger`) are scored on the same week when they exist; today none do.
+- **Alert rules** (all thresholds provisional until step 14): batch blocked (critical); any monitored feature at PSI
+  >= 0.25 (high) or two at >= 0.10 (medium); score PSI >= 0.10 or KS >= 0.10; AUC-PR 0.04 below the champion's
+  baseline (high); calibration gap >= 20% (medium); a degraded slice (medium).
+- **Slice rule, corrected after the first real week:** a slice is flagged only when its drop exceeds the overall drop
+  (floored at zero) by 0.03 **and** its bootstrap interval sits entirely below baseline-minus-overall. Without the
+  floor, a control week where the whole population improved flagged three slices that merely improved less.
+- **Diagnosis** (week over week, final once labels are in; a rejected batch is diagnosed `technical` at once): features
+  changed = a monitored numeric feature's KS rose >= 0.045 or a categorical's JS >= 0.03; score changed = score KS rose
+  >= 0.03 or its mean moved >= 1 point; performance dropped = AUC-PR >= 0.04 below baseline. Order: technical,
+  covariate shift, concept drift, label shift.
+- **Metrics:** pushed to the Pushgateway in two groups per week (`stage=batch` describes week N, `stage=labels`
+  describes week N-1), so label-dependent series appear a week late by construction. Per-feature PSI and KS,
+  score drift, AUC-PR/Brier/rates, per-slice AUC-PR against its baseline, alerts and the diagnosis. Prometheus scrapes
+  the Pushgateway (`honor_labels`) and the model server's `/metrics` directly (push and pull both demonstrated).
+  MLflow gets one run per week in the experiment `production_monitoring`.
+- **Result of the first full run (13 weeks, 13 green runs):**
+
+  | Weeks | What the loop said |
+  |---|---|
+  | 1-2 | no alerts (control weeks quiet) |
+  | 3 | no alert (PSI 0.09) but diagnosed covariate shift (week-over-week KS rise) |
+  | 4 | `data_drift_moderate`, first alert |
+  | 5 | `data_drift_major` (annuity/credit PSI 0.80), covariate shift |
+  | 6-7 | PSI alerts keep firing against the old baseline, diagnosis `none` (the new normal stopped changing) |
+  | 8 | `performance_drop` once its labels arrived at run 9; diagnosed `concept_drift` |
+  | 9 | `batch_blocked`, diagnosed `technical`; `score_batch` and `drift_report` skipped, batch quarantined |
+  | 10-11 | `performance_drop` and `concept_drift` again |
+  | 12 | AUC-PR 0.034 below baseline: **missed** by the 0.04 threshold (single-week noise is about +-0.04) |
+  | 13 | its labels would arrive at run 14, beyond the 13-week horizon |
+
+- **Findings to carry forward:**
+  1. **The PSI alert repeats every week from week 5 to 13** because the baseline is the champion's training window until a
+     promotion re-points it. That is correct but noisy; a real alerting layer would deduplicate or escalate "ongoing".
+  2. **The slice scan ranks the right slices but the flag threshold is conservative.** By week 11 the top slices are
+     `AMT_INCOME_TOTAL low` (drop 0.093) and `AGE low` (0.092), the two variables that define the injected segment, but
+     they only just reach overall drop + 0.03, and nothing was flagged. In week 8 the window still contains healthy
+     week 7. Step 14 tunes this on two seeds; the dashboard should rank slices by drop rather than rely on the flag.
+  3. **One week of AUC-PR is too noisy for a hard 0.04 rule** (week 12 missed, 8/10/11 caught). AUC-ROC is steadier.
+

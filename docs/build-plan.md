@@ -118,13 +118,14 @@ Ordered implementation plan for the Tech Challenge 4 project. Design decisions l
   by the monitoring DAG.
 
 ### 12. `production_monitoring` DAG [R]
-- [ ] **Claude:** per simulated week: gate batch -> score -> Evidently report -> backfill week
+- [x] **Claude:** per simulated week: gate batch -> score -> Evidently report -> backfill week
       N-1 performance (label delay) -> score comparison models -> log to MLflow -> push
       metrics -> alert.
 - **Why:** the heart of the "sustentacao e confiabilidade" layer.
 
 ### 13. Prometheus, Pushgateway and Grafana [R]
-- [ ] **Claude:** add to Compose; dashboard: drift severity (two PSI lines), alerts, AUC-PR,
+- [x] Prometheus and the Pushgateway are in Compose and receive the DAG's metrics (done with step 12).
+- [ ] **Claude:** add Grafana; dashboard: drift severity (two PSI lines), alerts, AUC-PR,
       Brier, predicted vs observed default rate, slice chart, diagnosis table, pipeline
       health, latency. Provisioned as code so it redeploys unchanged.
 - **Why:** the one-screen story for the video (20%).
