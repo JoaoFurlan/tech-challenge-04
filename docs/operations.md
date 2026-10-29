@@ -17,11 +17,13 @@ killed a training run and is too little for Airflow.
 
 ```bash
 # open the UIs and the server on the laptop (nothing is exposed on the LAN)
-ssh -N -L 5000:localhost:5000 -L 8010:localhost:8010 pricing-server     # MLflow on :5000, server on :8010
+ssh -N -L 5000:localhost:5000 -L 8010:localhost:8010 -L 8080:localhost:8080 pricing-server
+# MLflow http://localhost:5000, model server :8010, Airflow http://localhost:8080
 
 # put new code on the box, and rebuild what changed
-git push
-ssh pricing-server 'cd ~/tech-challenge-04 && git pull && docker compose up -d --build'
+scripts/sync-box.sh                                  # sends the commits GitHub or the box lack, as a git bundle
+ssh pricing-server 'cd ~/tech-challenge-04 && docker compose up -d --build'
+# (a plain `git push` then `git pull` on the box also works, but the global pre-push hook asks for a terminal)
 
 # status, logs
 ssh pricing-server 'cd ~/tech-challenge-04 && docker compose ps && docker compose logs --tail 30 serving'
@@ -30,6 +32,23 @@ ssh pricing-server 'cd ~/tech-challenge-04 && docker compose ps && docker compos
 With the tunnel open, laptop scripts that talk to `http://127.0.0.1:5000` (MLflow) or `:8010` (the server) reach the
 box transparently, so `uv run python -m credit_drift.training.run ...` keeps working unchanged. Ports 5000 and 8010
 must be free on the laptop, i.e. its own compose stack must be stopped.
+
+## Airflow
+
+The Airflow services run only where the profile is on: the box's `.env` holds
+
+```
+AIRFLOW_UID=1000                  # the box user's uid, so mounted outputs are not root-owned
+COMPOSE_PROFILES=airflow
+RESTART_POLICY=unless-stopped     # the stack comes back after a reboot
+```
+
+and `artifacts/`, `reports/` and `gx/` must exist before the first `up` (otherwise Docker creates them as root).
+Trigger a run from the UI (DAG `training_pipeline`, "Trigger with config": `{"quick": true}` for a smoke test) or:
+
+```bash
+ssh pricing-server 'cd ~/tech-challenge-04 && docker compose exec -T airflow-scheduler airflow dags trigger training_pipeline --conf "{\"quick\": true}"'
+```
 
 ## Heavy runs
 

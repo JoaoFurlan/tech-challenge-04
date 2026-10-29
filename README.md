@@ -128,6 +128,18 @@ O que isso faz com o modelo campeão (resultado medido, não suposto):
 - Uma única semana de 5.000 clientes é ruidosa (intervalo de confiança do AUC-PR de ±0,04), por isso
   as métricas por fatia usam janelas de duas semanas.
 
+## Orquestração (Airflow)
+
+O Airflow 3 roda no servidor Linux (`docker compose`, perfil `airflow`; interface em `http://localhost:8080` por túnel
+SSH). O projeto fica em um ambiente virtual próprio dentro da imagem, para que as versões fixas de dependências do
+Airflow não briguem com as nossas (LightGBM, Great Expectations, MLflow, Evidently), e as tarefas dos DAGs são finas:
+chamam `python -m credit_drift...`, e a lógica fica em `src/`.
+
+O DAG **`training_pipeline`** (disparo manual) valida os dados de referência contra o contrato completo (e para se algo
+for rejeitado), executa os experimentos em etapas no MLflow (engenharia de features, seleção de modelo, ajuste de
+hiperparâmetros) e registra o campeão com o limiar de decisão. O parâmetro `quick` faz um teste rápido (10 mil linhas, 3
+tentativas, nomes separados). Foi verificado de ponta a ponta no servidor: execução completa em cerca de 2,3 minutos.
+
 ## Servidor do modelo
 
 Um serviço FastAPI (`docker compose up -d`, porta local 8010) carrega o campeão do registro do MLflow

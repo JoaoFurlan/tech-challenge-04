@@ -93,7 +93,7 @@ Ordered implementation plan for the Tech Challenge 4 project. Design decisions l
   every later comparison starts from it.
 
 ### 8. `training_pipeline` DAG [extra]
-- [ ] **Claude:** local Airflow wrapping steps 5-7 (ingest -> contracts -> experiments -> register).
+- [x] **Claude:** local Airflow wrapping steps 5-7 (ingest -> contracts -> experiments -> register).
 - **Why:** reproducible, visible training; the retraining DAG reuses its tasks.
 
 ## Phase 3 - Drift and the monitoring loop

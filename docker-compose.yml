@@ -39,6 +39,7 @@ x-airflow-common: &airflow-common
 
 services:
   postgres:
+    restart: ${RESTART_POLICY:-no}  # the Linux box sets unless-stopped in its .env
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-mlops}
@@ -53,6 +54,7 @@ services:
       retries: 10
 
   mlflow:
+    restart: ${RESTART_POLICY:-no}  # the Linux box sets unless-stopped in its .env
     build:
       context: .
       dockerfile: docker/Dockerfile.mlflow
@@ -74,6 +76,7 @@ services:
       retries: 12
 
   serving:
+    restart: ${RESTART_POLICY:-no}  # the Linux box sets unless-stopped in its .env
     build:
       context: .
       dockerfile: docker/Dockerfile.serving
@@ -90,6 +93,7 @@ services:
 
   # ---- Airflow (profile "airflow": the Linux box sets COMPOSE_PROFILES=airflow in its .env; the laptop does not) ----
   airflow-postgres:
+    restart: ${RESTART_POLICY:-no}  # the Linux box sets unless-stopped in its .env
     image: postgres:16-alpine
     profiles: ["airflow"]
     environment:
@@ -123,7 +127,7 @@ services:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/api/v2/monitor/health')"]
       interval: 15s
       retries: 10
-    restart: unless-stopped
+    restart: ${RESTART_POLICY:-no}
 
   airflow-scheduler:
     <<: *airflow-common
@@ -131,7 +135,7 @@ services:
     depends_on:
       airflow-init:
         condition: service_completed_successfully
-    restart: unless-stopped
+    restart: ${RESTART_POLICY:-no}
 
   airflow-dag-processor:
     <<: *airflow-common
@@ -139,7 +143,7 @@ services:
     depends_on:
       airflow-init:
         condition: service_completed_successfully
-    restart: unless-stopped
+    restart: ${RESTART_POLICY:-no}
 
 volumes:
   pgdata:

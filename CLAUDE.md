@@ -359,7 +359,7 @@ Planning complete through the architecture decisions above (drift schedule simpl
 retraining/recalibration moved to a stretch phase after reviewing the assignment's actual
 requirements). A visual overview of the flow and the planned Grafana dashboard exists as a
 draft artifact; the timeline was extended to 13 weeks to fit a second retrain for concept
-drift; notebooks (EDA, retraining analysis, drift evaluation) were added to the plan. Steps 1–7 and 9–11
+drift; notebooks (EDA, retraining analysis, drift evaluation) were added to the plan. Steps 1–11
 are done (skeleton on Python 3.14 with uv, DVC with an S3 remote, EDA, decisions, the data split,
 contracts, staged MLflow experiments and a registered champion `credit_scoring@champion`:
 variant B + LightGBM, Platt-calibrated). The ordered
@@ -368,4 +368,4 @@ implementation plan, with what Claude builds and what the repo owner must do, is
 rerun on AWS with the same commit, data, frozen thresholds and champion; never tune on AWS.
 The stack (Postgres, MLflow, model server, later Airflow/Prometheus/Grafana) runs on the Linux box
 `pricing-server`, reached by SSH tunnel; the laptop is the workstation (see `docs/operations.md`; the repo was verified on
-a clean checkout there: 76 tests pass). Next: Airflow on the box (step 8) and the `production_monitoring` DAG (step 12).
+a clean checkout there: 76 tests pass). Airflow runs on the box (`training_pipeline` DAG verified end to end). Next: the `production_monitoring` DAG (step 12).

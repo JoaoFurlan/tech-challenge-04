@@ -319,3 +319,36 @@ Code in `src/credit_drift/serving/` (`registry.py` resolves the champion, `app.p
   compose name; the public name must be added on AWS. The mlflow service also has a healthcheck, which the
   serving service waits for.
 
+## 13. Airflow and the training pipeline (step 8)
+
+Services in `docker-compose.yml` under the profile `airflow` (the box sets `COMPOSE_PROFILES=airflow` in its `.env`,
+so a plain `docker compose up` on the laptop stays light); image `docker/Dockerfile.airflow`; DAG `dags/training_pipeline.py`.
+
+- **Airflow 3.3.2** (official `slim` image on Python 3.14), LocalExecutor, a dedicated Postgres for its metadata
+  (separate from MLflow's), `api-server` (UI and API, `127.0.0.1:8080`), `scheduler` and `dag-processor`. Idle, the four
+  services together use under 1 GB.
+- **The project lives in its own virtualenv** (`/opt/credit-drift/.venv`, built from `uv.lock` with the training,
+  validation and monitoring groups), so Airflow's pinned dependencies never fight LightGBM, Great Expectations, MLflow
+  or Evidently. DAG tasks are thin `BashOperator`s that call `python -m credit_drift...` in that venv; the logic stays in
+  `src/`. The image is 3.7 GB because of that environment.
+- **Code is mounted, not baked:** `src`, `config`, `data`, `artifacts`, `reports`, `gx` and `dags` are bind mounts, so
+  `git pull` on the box changes behaviour without rebuilding. The containers run as the host user
+  (`AIRFLOW_UID=1000` in the box's `.env`), so files they write belong to that user, not to root.
+- **Auth:** `SimpleAuthManager` with all users as admins, safe only because the UI listens on `127.0.0.1` and is reached
+  through the SSH tunnel (the SSH key is the login). Secrets (`AIRFLOW_FERNET_KEY`, `AIRFLOW_JWT_SECRET`,
+  `AIRFLOW_API_SECRET`, `AIRFLOW_DB_PASSWORD`) default to dev values; set real ones in the box's `.env` before sharing.
+- **`training_pipeline`** (manual trigger, params `quick` and `trials`): `check_data` -> `contracts` (all three Reference
+  parts against the full contract, labels included; stops the run if one is rejected) -> `feature_engineering` ->
+  `model_selection` -> `hyperparameter_tuning` -> `champion` (registers the model and tags the decision threshold).
+  `quick = true` is the smoke test: 10k rows, 3 trials, separate experiment and model names.
+- **Verified on the box:** a quick run went green end to end in about 2.3 minutes (contracts alone 59 s). Quick runs
+  reuse experiment names like `quick_feature_engineering`; MLflow refuses to reuse a *deleted* experiment's name, so
+  restore them (not purge) before a smoke test and delete them again afterwards.
+- **Things that bit during setup:** the slim image has no Postgres drivers (`psycopg2-binary` and, for Airflow 3's async
+  engine, `asyncpg`) and no `libgomp1` (LightGBM); each went into its own late Dockerfile layer so the 3 GB environment
+  layer stays cached. Containers need `AIRFLOW_UID` or bind-mounted outputs end up root-owned.
+- **Restart:** every service uses `restart: ${RESTART_POLICY:-no}`; the box sets `unless-stopped`, so the stack returns
+  after a reboot, while the laptop does not auto-start it.
+- **Not yet built:** the `production_monitoring` DAG (step 12) and the stretch `retraining_pipeline` DAG, which reuses
+  this DAG's tasks.
+
