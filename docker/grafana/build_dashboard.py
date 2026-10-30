@@ -117,7 +117,7 @@ def feature_matrix(x: int, y: int, w: int, h: int) -> dict:
     """PSI of every monitored feature, features down and weeks across: which feature moved, and when."""
     expr = padded("sum by (week, feature) (drift_feature_psi)")
     return {
-        "type": "table", "title": "PSI by feature and week (32 monitored features, sorted by week 8)",
+        "type": "table", "title": "PSI by feature and week (scroll for all 32 features)",
         "description": ("Each cell is one feature's PSI against the champion's training window for that week. Green is under "
                         "0.10 (stable), orange 0.10 to 0.25 (moderate), red above 0.25 (major). A week with no cell was blocked "
                         "by the contract. Some injected shifts, like employment, stay under 0.10."),
@@ -128,11 +128,11 @@ def feature_matrix(x: int, y: int, w: int, h: int) -> dict:
             {"id": "sortBy", "options": {"fields": {}, "sort": [{"field": "08", "desc": True}]}},
         ],
         "fieldConfig": {"defaults": {"decimals": 2, "custom": {"cellOptions": {"type": "color-background", "mode": "basic"},
-                                                             "align": "center", "width": 72},
+                                                             "align": "center", "width": 50},
                                      "thresholds": steps((GREEN, None), (ORANGE, 0.10), (RED, 0.25)),
                                      "color": {"mode": "thresholds"}},
                         "overrides": [{"matcher": {"id": "byName", "options": "feature\\week"},
-                                       "properties": [{"id": "custom.width", "value": 260}]}]},
+                                       "properties": [{"id": "custom.width", "value": 215}]}]},
         "options": {"showHeader": True, "cellHeight": "sm"},
     }
 
@@ -250,17 +250,23 @@ def build() -> dict:
             put(find("Drift severity by week (PSI)"), 0, 17, 8, 8),
             put(find("Monitored features past the limits"), 8, 17, 8, 8),
             put(find("Score drift"), 16, 17, 8, 8),
-            feature_matrix(0, 25, 24, 27)]
-    act3 = [row("Act 3 · Did the model get worse? (labels arrive a week late)", 52),
-            put(find("AUC-PR by week"), 0, 53, 8, 8),
-            put(find("Brier score by week"), 8, 53, 8, 8),
-            put(find("Predicted vs observed default rate"), 16, 53, 8, 8)]
-    details = row("Details: where it got worse, why, and which alerts fired (click to open)", 61)
+            feature_matrix(0, 25, 16, 13),
+            text("How to read the heat map",
+                 "Rows are the monitored features, sorted by how much they moved; columns are weeks. "
+                 "**Green** is under 0.10 (stable), **orange** 0.10 to 0.25, **red** above 0.25. "
+                 "Scroll inside the table to see all 32 features. A week with no column was blocked by the contract (week 9). "
+                 "Only four features cross 0.10: the annuity ratios, income and the annuity; the rest stay green.",
+                 16, 25, 8, 13)]
+    act3 = [row("Act 3 · Did the model get worse? (labels arrive a week late)", 38),
+            put(find("AUC-PR by week"), 0, 39, 8, 8),
+            put(find("Brier score by week"), 8, 39, 8, 8),
+            put(find("Predicted vs observed default rate"), 16, 39, 8, 8)]
+    details = row("Details: where it got worse, why, and which alerts fired (click to open)", 47)
     details["collapsed"] = True
     details["panels"] = [
-        put(find("Slice AUC-PR drop against the champion's own baseline (weeks across, slices down)"), 0, 62, 24, 16),
-        put(find("Diagnosed cause by week"), 0, 78, 8, 14),
-        put(find("Alerts raised", "table"), 8, 78, 16, 14)]
+        put(find("Slice AUC-PR drop against the champion's own baseline (weeks across, slices down)"), 0, 48, 24, 16),
+        put(find("Diagnosed cause by week"), 0, 64, 8, 14),
+        put(find("Alerts raised", "table"), 8, 64, 16, 14)]
     panels = tiles + act1 + act2 + act3 + [details]
     n = 0
     for panel in panels:

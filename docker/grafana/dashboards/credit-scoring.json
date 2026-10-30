@@ -1318,7 +1318,7 @@
   },
   {
    "type": "table",
-   "title": "PSI by feature and week (32 monitored features, sorted by week 8)",
+   "title": "PSI by feature and week (scroll for all 32 features)",
    "description": "Each cell is one feature's PSI against the champion's training window for that week. Green is under 0.10 (stable), orange 0.10 to 0.25 (moderate), red above 0.25 (major). A week with no cell was blocked by the contract. Some injected shifts, like employment, stay under 0.10.",
    "datasource": {
     "type": "prometheus",
@@ -1327,8 +1327,8 @@
    "gridPos": {
     "x": 0,
     "y": 25,
-    "w": 24,
-    "h": 27
+    "w": 16,
+    "h": 13
    },
    "targets": [
     {
@@ -1375,7 +1375,7 @@
        "mode": "basic"
       },
       "align": "center",
-      "width": 72
+      "width": 50
      },
      "thresholds": {
       "mode": "absolute",
@@ -1407,7 +1407,7 @@
       "properties": [
        {
         "id": "custom.width",
-        "value": 260
+        "value": 215
        }
       ]
      }
@@ -1420,6 +1420,21 @@
    "id": 16
   },
   {
+   "type": "text",
+   "title": "How to read the heat map",
+   "gridPos": {
+    "x": 16,
+    "y": 25,
+    "w": 8,
+    "h": 13
+   },
+   "options": {
+    "mode": "markdown",
+    "content": "Rows are the monitored features, sorted by how much they moved; columns are weeks. **Green** is under 0.10 (stable), **orange** 0.10 to 0.25, **red** above 0.25. Scroll inside the table to see all 32 features. A week with no column was blocked by the contract (week 9). Only four features cross 0.10: the annuity ratios, income and the annuity; the rest stay green."
+   },
+   "id": 17
+  },
+  {
    "type": "row",
    "title": "Act 3 \u00b7 Did the model get worse? (labels arrive a week late)",
    "collapsed": false,
@@ -1427,10 +1442,10 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 52
+    "y": 38
    },
    "panels": [],
-   "id": 17
+   "id": 18
   },
   {
    "type": "trend",
@@ -1442,7 +1457,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 53,
+    "y": 39,
     "w": 8,
     "h": 8
    },
@@ -1593,7 +1608,7 @@
      "sort": "none"
     }
    },
-   "id": 18
+   "id": 19
   },
   {
    "type": "trend",
@@ -1605,7 +1620,7 @@
    },
    "gridPos": {
     "x": 8,
-    "y": 53,
+    "y": 39,
     "w": 8,
     "h": 8
    },
@@ -1756,7 +1771,7 @@
      "sort": "none"
     }
    },
-   "id": 19
+   "id": 20
   },
   {
    "type": "trend",
@@ -1768,7 +1783,7 @@
    },
    "gridPos": {
     "x": 16,
-    "y": 53,
+    "y": 39,
     "w": 8,
     "h": 8
    },
@@ -1941,7 +1956,7 @@
      "sort": "none"
     }
    },
-   "id": 20
+   "id": 21
   },
   {
    "type": "row",
@@ -1951,7 +1966,7 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 61
+    "y": 47
    },
    "panels": [
     {
@@ -1964,7 +1979,7 @@
      },
      "gridPos": {
       "x": 0,
-      "y": 62,
+      "y": 48,
       "w": 24,
       "h": 16
      },
@@ -2047,7 +2062,7 @@
       "showHeader": true,
       "cellHeight": "sm"
      },
-     "id": 22
+     "id": 23
     },
     {
      "type": "table",
@@ -2059,7 +2074,7 @@
      },
      "gridPos": {
       "x": 0,
-      "y": 78,
+      "y": 64,
       "w": 8,
       "h": 14
      },
@@ -2162,7 +2177,7 @@
       "showHeader": true,
       "cellHeight": "sm"
      },
-     "id": 23
+     "id": 24
     },
     {
      "type": "table",
@@ -2174,7 +2189,7 @@
      },
      "gridPos": {
       "x": 8,
-      "y": 78,
+      "y": 64,
       "w": 16,
       "h": 14
      },
@@ -2270,10 +2285,10 @@
       "showHeader": true,
       "cellHeight": "sm"
      },
-     "id": 24
+     "id": 25
     }
    ],
-   "id": 21
+   "id": 22
   }
  ]
 }
