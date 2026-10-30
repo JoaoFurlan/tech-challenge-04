@@ -21,10 +21,32 @@ portão de promoção e governança (LGPD) com análise causal. Conjunto de dado
 | **Vídeo STAR** (15%) | [Vídeo](#vídeo-star) |
 
 Requisitos obrigatórios do desafio: pipeline de validação (contratos), scripts de simulação e detecção estatística de drift,
-dashboards e relatórios HTML, governança consolidada neste README e histórico de commits semânticos. Boas práticas: Referência
+dashboards e relatórios HTML, governança consolidada neste README e histórico de commits semânticos. Termos técnicos: veja o [Glossário](#glossário-o-termo-técnico-em-palavras-simples-com-exemplo-e-número). Boas práticas: Referência
 e Produção separadas em arquivos distintos; mais de três regras rígidas de qualidade (idade 18–100, renda não nula e positiva,
 sem IDs duplicados, esquema e tipos, valores positivos); relatório estatístico de mudança de distribuição (PSI e KS); plano de
 privacidade.
+
+## Glossário: o termo técnico, em palavras simples, com exemplo e número
+
+Cada termo abaixo segue a mesma ordem: o nome técnico, o que é em linguagem simples, um exemplo e o que ele mostrou neste projeto.
+
+| Termo técnico | Em palavras simples | Exemplo | No nosso projeto (número e impacto) |
+|---|---|---|---|
+| **Model drift** (degradação silenciosa) | o modelo continua dando notas, mas elas ficam piores, e ninguém é avisado | uma renda de R$ 5 mil passa a valer menos com a inflação | o AUC-PR cai de 0,246 para cerca de 0,19 nas semanas de concept drift |
+| **Data drift** (covariate shift) | os clientes que chegam são diferentes dos de treino | a renda média cai de R$ 167 mil para R$ 145 mil | PSI da renda de 0,00 para 0,16 na semana 5; nessa fase o desempenho não caiu (0,261 contra 0,262 esperado) |
+| **Concept drift** | os clientes parecem os mesmos, mas o que cada perfil significa para o risco mudou | "score externo alto é seguro" deixa de valer para um grupo | em 26% dos clientes o efeito de `EXT_SOURCE_2` foi invertido e reduzido à metade; PSI e KS não mudam, e o AUC-PR cai cerca de 0,07 além do que as entradas explicam |
+| **PSI** (Population Stability Index) | mede o quanto a distribuição de uma variável mudou: abaixo de 0,10 estável, acima de 0,25 mudança forte | a renda média de um mês contra a do treino | semanas de controle: no máximo 0,012; semana 5: 0,80 na razão parcela/crédito |
+| **KS** (Kolmogorov–Smirnov) | a maior distância entre duas distribuições acumuladas | quanto o gráfico acumulado da renda de hoje se afasta do de treino | evidência complementar ao PSI; com 5.000 linhas por semana o ruído é de cerca de 0,02 |
+| **AUC-PR** | o quanto o modelo põe os maus pagadores no topo da lista; ao acaso, vale a taxa de inadimplência | de 100 clientes barrados, quantos realmente não pagariam | 0,081 ao acaso contra 0,246: de cada 100 barrados, 26 não pagariam, contra 8 ao acaso |
+| **Brier** | o erro médio das probabilidades previstas; mede se dá para confiar nelas | o modelo diz 20% e cerca de 20% do grupo de fato não paga | 0,068, melhor que o palpite constante de 0,0745 |
+| **Calibração** | a probabilidade prevista bate com a taxa observada | previsto 8% e observado 8% | semana 5: previsto 0,090 e observado 0,088 (diferença de 2%); em todas as semanas a diferença ficou abaixo do limite de alerta de 20% |
+| **Data contract** (contrato de dados) | regras que o lote precisa cumprir para entrar no pipeline | idade entre 18 e 100 anos | o lote corrompido da semana 9 foi bloqueado; sem isso, 12% das notas sairiam sem renda |
+| **Label delay** | o resultado (pagou ou não) só chega depois | um cliente só é "inadimplente" meses depois da concessão | 1 semana simulada; em produção seriam meses |
+| **Contrafactual por reponderação** | pesar a base de treino para parecer com a produção e ver a nota esperada | "se os clientes de hoje tivessem o comportamento de ontem, qual seria a nota?" | esperado 0,262, observado 0,192: 0,070 (IC 95% 0,045 a 0,092) não são explicados pelas entradas |
+| **Portão de promoção** (bootstrap pareado) | teste estatístico que decide se um modelo novo substitui o atual | só troca se o ganho de custo for provado com 95% de confiança | 3 tentativas, todas recusadas; em semanas novas o candidato ganha +0,011 de AUC-PR, que 5 mil clientes por semana não provam rápido |
+| **Viés** (discriminação indireta) | o modelo erra mais para um grupo do que para outro, mesmo sem usar a característica | de 100 clientes que pagariam, 13 homens e 8 mulheres são barrados | homens sinalizados 1,61 vez mais (16,1% contra 9,9%) |
+| **Pseudonimização** | usar um ID no lugar do nome | `SK_ID_CURR` em vez de nome e CPF | nenhuma linha de cliente em relatórios, logs ou MLflow |
+| **Base legal** (LGPD, art. 7º) | a razão que a lei aceita para tratar o dado | executar o contrato de crédito | contrato (V) e proteção ao crédito (X) para o escore; legítimo interesse (IX) para monitorar |
 
 ## Reproduzindo do zero
 
@@ -119,6 +141,8 @@ as demais tabelas de histórico, porque o foco do projeto é o monitoramento em 
 
 ## Simulação de drift
 
+**Em palavras simples:** como não há uma fintech de verdade, criamos 16 "semanas" de clientes em que mexemos de propósito em renda, parcela e na relação com o risco, sabendo exatamente o que foi alterado. **Exemplo:** na semana 5 a parcela sobe 15%. **Impacto:** o PSI da razão parcela/crédito vai de 0,00 para 0,80, mas o desempenho não cai; só o concept drift (semana 8 em diante) derruba o AUC-PR, de 0,246 para cerca de 0,19.
+
 Os dados de produção (100 mil linhas separadas do treino) são cortados em **16 semanas** de 5.000
 clientes, sem sobreposição, e um estado de "mundo" é aplicado a cada semana
 (`uv run python -m credit_drift.drift.simulate`; decisões em `docs/decisions.md`, seção 10). O tempo é
@@ -139,8 +163,8 @@ e `drift_spec.json` registra o que foi injetado: é o gabarito usado **apenas of
 
 O que isso faz com o modelo campeão (resultado medido, não suposto):
 
-- O drift de covariáveis mexe nas distribuições e na probabilidade média prevista (de 8,2% para
-  cerca de 8,8%, enquanto a inadimplência observada fica perto de 8,3%), mas quase não muda o AUC-PR
+- O drift de covariáveis mexe nas distribuições e na probabilidade média prevista (de 8,2% na semana 1 para
+  9,0% na semana 5, e a inadimplência observada acompanha: de 8,5% para 8,8%, então não há descalibração), mas quase não muda o AUC-PR
   (0,251 → 0,238 só com o choque da parcela).
 - O drift de conceito faz o contrário: nenhuma distribuição se mexe, mas o AUC-PR cai cerca de 0,04
   e o AUC-ROC vai de 0,76–0,78 para 0,72–0,74. PSI e KS **não** veem isso; só o desempenho (com
@@ -202,6 +226,8 @@ Os logs de execução ficam no Airflow (por tarefa e por tentativa) e cada seman
 `production_monitoring` do MLflow com as métricas e os artefatos.
 
 ## Retreino e recalibração
+
+**Em palavras simples:** quando o modelo piora, dá para recalibrar o atual ou treinar um novo, mas só trocamos o campeão se um teste estatístico (o portão) provar que o novo é melhor. **Exemplo:** o candidato novo tem de reduzir o custo (perder um mau pagador custa 5 vezes mais que barrar um bom) com 95% de confiança. **Impacto:** em três tentativas o portão recusou todos os candidatos, embora, em semanas novas, o melhor ganhe +0,011 de AUC-PR.
 
 O `retraining_pipeline` roda dentro do laço, com atraso de rótulos de **uma semana**: dispara no primeiro alerta forte de
 drift de dados (semana 5, rótulos até a semana 4) e depois em alertas de queda de desempenho (semanas 11 e 14, com
@@ -275,6 +301,8 @@ curl -s -X POST localhost:8010/predict -H 'content-type: application/json' -d '{
 
 ## Detecção de drift
 
+**Em palavras simples:** a cada semana comparamos cada variável com a base de treino do campeão: o PSI diz o quanto mudou, o KS dá a distância entre as distribuições e o Evidently gera o relatório. **Exemplo:** a renda média caiu de R$ 167 mil para R$ 145 mil e o PSI da renda foi para 0,16. **Impacto:** isso mostra quais variáveis mudaram e dispara o alerta, mas não diz se o modelo piorou.
+
 Cada semana é validada pelo contrato e, se passar, pontuada pelo modelo campeão e comparada com duas
 bases (`uv run python -m credit_drift.monitoring.run_drift`; decisões em `docs/decisions.md`, seção 11):
 
@@ -314,6 +342,8 @@ de 1e-26: PSI e testes de hipótese respondem a perguntas diferentes.
 
 ## Contratos de dados
 
+**Em palavras simples:** um contrato de dados são regras que o lote precisa cumprir antes de entrar; se uma regra de bloqueio quebra, o lote inteiro é barrado. **Exemplo:** idade fora de 18 a 100 anos. **Impacto:** o lote corrompido da semana 9 (12% de rendas nulas, idades menores que 18, IDs repetidos) foi barrado por Pandera e Great Expectations e nunca chegou ao modelo.
+
 Toda carga de dados passa por dois validadores com papéis diferentes (regras em
 `src/credit_drift/contracts/`, decisões em `docs/decisions.md`):
 
@@ -341,6 +371,8 @@ uv run python -m credit_drift.contracts.demo
 O relatório gerado está em `docs/reports/data_docs/index.html`.
 
 ## Causalidade
+
+**Em palavras simples:** queremos saber se a queda de desempenho veio de os clientes terem mudado ou de o risco ter mudado. **Exemplo:** perguntamos "se os clientes de hoje tivessem o comportamento de ontem, qual seria a nota?". **Impacto:** esperado 0,262, observado 0,192, então 0,070 não vêm das entradas: é concept drift.
 
 A pergunta da diretoria é "o que causou a degradação?". Com um simulador, temos a verdade do que foi injetado (`drift_spec.json`),
 então dá para comparar causa injetada, causa atribuída pelos detectores e causa estimada por contrafactual. A verdade só é usada
@@ -460,6 +492,8 @@ treinados deixam de conter o dado depois do próximo retreino (*). A revisão de
 | Logs do pipeline | não (sem valores) | 90 dias (proposta) | diagnóstico operacional |
 
 ### Mitigação de vieses
+
+**Em palavras simples:** viés aqui é o modelo errar mais para um grupo do que para outro, mesmo sem usar a característica. **Exemplo:** de 100 clientes que pagariam, 13 homens e 8 mulheres são barrados. **Impacto:** risco de discriminação indireta (LGPD, art. 6º, IX), que excluir o gênero do modelo não elimina.
 
 `CODE_GENDER` não entra no modelo, mas a verificação de viés exige medir por gênero. Resultado do campeão (v1) na parte de teste
 da Referência, no limiar de decisão (1/6), calculado por `credit_drift.monitoring.fairness` (`docs/calibration/fairness.json`):

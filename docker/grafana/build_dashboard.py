@@ -210,7 +210,7 @@ def build() -> dict:
                     desc="Lower is better. The line is the constant-default-rate guess (0.0745): a useful model stays below it."),
         weekly_lines("Predicted vs observed default rate", [("model_mean_pred", "predicted"), ("model_observed_rate", "observed")],
                     16, 17, 8, 8, decimals=3, minimum=0, colors=["blue", "orange"],
-                    desc="Covariate drift pushes the prediction up while the observed rate stays put: a calibration gap."),
+                    desc="Both rise after the week-5 shock (0.090 predicted, 0.088 observed) and stay within 20% of each other; a wider gap would be a calibration alert."),
 
         row("Where is it getting worse? (14 slices over two weeks)", 25),
         slice_matrix(0, 26, 24, 16),
