@@ -144,7 +144,7 @@ def build() -> dict:
     psi_lines = steps((GREEN, None), (ORANGE, 0.10), (RED, 0.25))
     panels = [
         text("How to read this dashboard",
-             "**Weeks are simulated** (1 to 13) and are plotted as categories, not as time. Inputs and score describe "
+             "**Weeks are simulated** (1 to 16) and are plotted as categories, not as time. Inputs and score describe "
              "week N the day it runs. **Performance and slices need labels, which arrive a week late**, so they show week N "
              "only after week N+1 has run (week 9's labels never arrive: its batch was blocked). Alerts repeat from week 5 "
              "because the drift baseline stays the champion's training window until a new model is promoted.",

@@ -28,7 +28,7 @@ with DAG(
     catchup=False,
     max_active_runs=1,
     params={"run_week": Param(None, type=["integer", "string"],  # the triggering DAG passes it as text
-                              description="The simulated week (4-13) whose run triggered this retrain"),
+                              description="The simulated week (4-16) whose run triggered this retrain"),
             "trigger": Param(None, type=["null", "string"], description="Override the trigger (manual runs)")},
     tags=["retraining", "mlflow"],
     doc_md=__doc__,

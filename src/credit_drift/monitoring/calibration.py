@@ -1,6 +1,6 @@
 """Offline signals for calibrating the detector thresholds (step 14).
 
-Simulates the 13 weeks for a given seed IN MEMORY (nothing in the official `data/production/weeks` changes), scores
+Simulates the weeks for a given seed IN MEMORY (nothing in the official `data/production/weeks` changes), scores
 them with the champion, and keeps every raw signal the alert rules read: per-feature PSI/KS/JS, score drift, overall
 and per-slice performance, per week. The thresholds are then replayed over these signals without recomputing anything.
 

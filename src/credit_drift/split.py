@@ -12,7 +12,7 @@ from sklearn.model_selection import train_test_split
 from credit_drift.data import ID_COL, RAW_DIR, TARGET, load_application_train
 
 SEED = 42
-PRODUCTION_SIZE = 100_000  # 13 weeks x 5,000 rows = 65,000, plus headroom for resampled drift
+PRODUCTION_SIZE = 100_000  # 16 weeks x 5,000 rows = 80,000, plus headroom for resampled drift
 TRAIN_SHARE, CALIBRATION_SHARE = 0.70, 0.10  # test gets the remaining 20%
 
 DATA_DIR = RAW_DIR.parent

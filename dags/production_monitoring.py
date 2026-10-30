@@ -1,7 +1,7 @@
 """Production monitoring: one run per simulated week, the project's "sustentacao e confiabilidade" loop.
 
-Scheduled daily from 2026-01-01 to 2026-01-13 with catch-up, one run at a time, so January N is simulated week N and the
-13 weeks flow in order. (The data has no real timestamps; time is synthetic by design.)
+Scheduled daily from 2026-01-01 to 2026-01-16 with catch-up, one run at a time, so January N is simulated week N and the
+16 weeks flow in order. (The data has no real timestamps; time is synthetic by design.)
 
   gate -> choose_path -> score_batch -> drift_report ---+
           |                                             |
@@ -60,12 +60,12 @@ with DAG(
     description="One run per simulated week: contract, scoring, drift, labels, alerts, metrics",
     schedule="@daily",
     start_date=datetime(2026, 1, 1),
-    end_date=datetime(2026, 1, 13),
+    end_date=datetime(2026, 1, 16),
     catchup=True,
     max_active_runs=1,
     is_paused_upon_creation=True,
     default_args={"retries": 1, "retry_delay": timedelta(seconds=20)},
-    params={"week": Param(None, type=["null", "integer"], minimum=1, maximum=13,
+    params={"week": Param(None, type=["null", "integer"], minimum=1, maximum=16,
                           description="Rerun one specific week by hand (scheduled runs use the date: January N = week N)")},
     tags=["monitoring", "drift"],
     doc_md=__doc__,

@@ -55,15 +55,15 @@ def batches(pool):
     return simulate(pool, FakeLabelModel(), income_cutoff=150_000, week_rows=WEEK_ROWS)
 
 
-def test_schedule_has_thirteen_weeks_with_the_planned_episodes():
+def test_schedule_has_sixteen_weeks_with_the_planned_episodes():
     states = {s.week: s for s in sch.SCHEDULE}
-    assert sorted(states) == list(range(1, 14))
+    assert sorted(states) == list(range(1, 17))
     assert states[1].income_mult == states[2].income_mult == 1.0 and not states[2].concept_drift
     assert states[5].annuity_mult == pytest.approx(1.15) and states[5].income_mult == pytest.approx(0.86)
-    assert [w for w, s in states.items() if s.concept_drift] == [8, 9, 10, 11, 12, 13]
+    assert [w for w, s in states.items() if s.concept_drift] == [8, 9, *range(10, 17)]
     assert [w for w, s in states.items() if s.corrupted] == [9]
     levels = {(s.income_mult, s.employment_mult, s.annuity_mult, s.mix_level) for w, s in states.items() if w >= 5}
-    assert len(levels) == 1  # weeks 5-13 all sit in the same regime
+    assert len(levels) == 1  # weeks 5-16 all sit in the same regime
 
 
 def test_numeric_state_changes_values_in_place_and_leaves_the_sentinel(pool):

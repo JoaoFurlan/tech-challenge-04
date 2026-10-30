@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 SEED = 42
 WEEK_ROWS = 5_000
-N_WEEKS = 13
+N_WEEKS = 16
 LABEL_MODEL_SEED = 7  # independent of the champion's seed on purpose
 
 # Category-mix drift: log-weights at full strength that tilt a week's category shares (rows are resampled,
@@ -43,5 +43,5 @@ SCHEDULE: tuple[WeekState, ...] = (
     WeekState(8, **_REGIME, concept_drift=True, note="concept drift starts"),
     WeekState(9, **_REGIME, concept_drift=True, corrupted=True,
               note="corrupted batch, blocked by the contract; labels never arrive"),
-    *(WeekState(w, **_REGIME, concept_drift=True, note="concept drift persists") for w in range(10, 14)),
+    *(WeekState(w, **_REGIME, concept_drift=True, note="concept drift persists") for w in range(10, N_WEEKS + 1)),
 )

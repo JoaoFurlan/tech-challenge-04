@@ -9,10 +9,11 @@ from credit_drift.monitoring.performance import rolling_auc_pr
 # What was injected each week, as the detectors should see it (docs/decisions.md, #10, and the schedule).
 DIAGNOSIS_TRUTH = {1: "none", 2: "none", 3: "covariate_shift", 4: "covariate_shift", 5: "covariate_shift",
                    6: "none", 7: "none", 8: "concept_drift", 9: "technical", 10: "concept_drift",
-                   11: "concept_drift", 12: "concept_drift", 13: "concept_drift"}
+                   11: "concept_drift", 12: "concept_drift", 13: "concept_drift", 14: "concept_drift",
+                   15: "concept_drift", 16: "concept_drift"}
 CONTROL_WEEKS = (1, 2)
-SHIFT_WEEKS = (3, 4, 5, 6, 7, 8, 10, 11, 12, 13)  # inputs differ from the champion's training window
-CONCEPT_WEEKS = (8, 10, 11, 12, 13)  # P(y|x) changed in a segment (week 9's labels never arrive)
+SHIFT_WEEKS = (3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16)  # inputs differ from the champion's training window
+CONCEPT_WEEKS = (8, 10, 11, 12, 13, 14, 15, 16)  # P(y|x) changed in a segment (week 9's labels never arrive)
 
 
 def _table(week: dict) -> pd.DataFrame | None:
@@ -78,21 +79,23 @@ def replay(signals: dict, t: dict) -> list[dict]:
 def scorecard(records: list[dict]) -> dict:
     """What the rules got right, week by week, against the injection."""
     by_week = {r["week"]: r for r in records}
+    concept_weeks = tuple(w for w in CONCEPT_WEEKS if w in by_week)  # older signal files hold only 13 weeks
+    truth_by_week = {w: t for w, t in DIAGNOSIS_TRUTH.items() if w in by_week}
     data_rules = {"data_drift_moderate", "data_drift_major"}
     first_data = next((w for w in sorted(by_week) if by_week[w]["alerts"] & data_rules), None)
-    perf_hits = [w for w in CONCEPT_WEEKS if "performance_drop" in by_week[w]["alerts"]]
-    slice_hits = [w for w in CONCEPT_WEEKS if "slice_degradation" in by_week[w]["alerts"]]
-    wrong_diagnosis = {w: (by_week[w]["diagnosis"], truth) for w, truth in DIAGNOSIS_TRUTH.items()
+    perf_hits = [w for w in concept_weeks if "performance_drop" in by_week[w]["alerts"]]
+    slice_hits = [w for w in concept_weeks if "slice_degradation" in by_week[w]["alerts"]]
+    wrong_diagnosis = {w: (by_week[w]["diagnosis"], truth) for w, truth in truth_by_week.items()
                        if by_week[w]["diagnosis"] != truth}
-    non_concept = [w for w in by_week if w not in CONCEPT_WEEKS and w != 9]
+    non_concept = [w for w in by_week if w not in concept_weeks and w != 9]
     return {
         "control_false_alarms": sorted(w for w in CONTROL_WEEKS if by_week[w]["alerts"] - {"batch_blocked"}),
         "first_data_alert_week": first_data,
-        "data_alert_weeks_missed": sorted(w for w in SHIFT_WEEKS if not by_week[w]["alerts"] & data_rules and w >= 5),
-        "performance_recall": f"{len(perf_hits)}/{len(CONCEPT_WEEKS)}",
+        "data_alert_weeks_missed": sorted(w for w in SHIFT_WEEKS if w in by_week and not by_week[w]["alerts"] & data_rules and w >= 5),
+        "performance_recall": f"{len(perf_hits)}/{len(concept_weeks)}",
         "performance_false_alarms": sorted(w for w in non_concept if "performance_drop" in by_week[w]["alerts"]),
-        "slice_recall": f"{len(slice_hits)}/{len(CONCEPT_WEEKS)}",
+        "slice_recall": f"{len(slice_hits)}/{len(concept_weeks)}",
         "slice_false_alarms": sorted(w for w in non_concept if "slice_degradation" in by_week[w]["alerts"]),
-        "diagnosis_correct": f"{len(DIAGNOSIS_TRUTH) - len(wrong_diagnosis)}/{len(DIAGNOSIS_TRUTH)}",
+        "diagnosis_correct": f"{len(truth_by_week) - len(wrong_diagnosis)}/{len(truth_by_week)}",
         "diagnosis_wrong": wrong_diagnosis,
     }

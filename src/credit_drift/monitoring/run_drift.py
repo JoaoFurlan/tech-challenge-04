@@ -1,6 +1,6 @@
 """Standalone drift run over the simulated weeks, without Airflow: gate, score locally, measure, report.
 
-  uv run python -m credit_drift.monitoring.run_drift            # all 13 weeks
+  uv run python -m credit_drift.monitoring.run_drift            # all 16 weeks
   uv run python -m credit_drift.monitoring.run_drift --weeks 1 5 8
 
 The Airflow DAG `production_monitoring` does the same per week through the model server and adds labels, alerts and
@@ -18,6 +18,7 @@ import pandas as pd
 
 from credit_drift.contracts.pandera_gate import build_scoring_schema, validate_scoring_batch
 from credit_drift.contracts.profile import load_profile
+from credit_drift.drift.schedule import N_WEEKS
 from credit_drift.monitoring.context import analyze, build_context
 from credit_drift.split import DATA_DIR, PRODUCTION_DIR
 
@@ -63,5 +64,5 @@ def main(weeks: list[int]) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--weeks", type=int, nargs="*", default=list(range(1, 14)))
+    parser.add_argument("--weeks", type=int, nargs="*", default=list(range(1, N_WEEKS + 1)))
     main(parser.parse_args().weeks)
