@@ -1327,7 +1327,7 @@
    "gridPos": {
     "x": 0,
     "y": 25,
-    "w": 16,
+    "w": 18,
     "h": 13
    },
    "targets": [
@@ -1423,9 +1423,9 @@
    "type": "text",
    "title": "How to read the heat map",
    "gridPos": {
-    "x": 16,
+    "x": 18,
     "y": 25,
-    "w": 8,
+    "w": 6,
     "h": 13
    },
    "options": {

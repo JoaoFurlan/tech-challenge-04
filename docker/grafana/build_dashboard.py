@@ -250,13 +250,13 @@ def build() -> dict:
             put(find("Drift severity by week (PSI)"), 0, 17, 8, 8),
             put(find("Monitored features past the limits"), 8, 17, 8, 8),
             put(find("Score drift"), 16, 17, 8, 8),
-            feature_matrix(0, 25, 16, 13),
+            feature_matrix(0, 25, 18, 13),
             text("How to read the heat map",
                  "Rows are the monitored features, sorted by how much they moved; columns are weeks. "
                  "**Green** is under 0.10 (stable), **orange** 0.10 to 0.25, **red** above 0.25. "
                  "Scroll inside the table to see all 32 features. A week with no column was blocked by the contract (week 9). "
                  "Only four features cross 0.10: the annuity ratios, income and the annuity; the rest stay green.",
-                 16, 25, 8, 13)]
+                 18, 25, 6, 13)]
     act3 = [row("Act 3 · Did the model get worse? (labels arrive a week late)", 38),
             put(find("AUC-PR by week"), 0, 39, 8, 8),
             put(find("Brier score by week"), 8, 39, 8, 8),
