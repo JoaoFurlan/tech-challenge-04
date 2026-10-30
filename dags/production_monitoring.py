@@ -20,6 +20,7 @@ Scheduled daily from 2026-01-01 to 2026-01-13 with catch-up, one run at a time, 
 Pass the `week` parameter to rerun one specific week by hand.
 """
 import json
+import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -40,13 +41,10 @@ def choose_path(week: str) -> str:
 
 
 def retrain_or_not(week: str) -> str:
-    """The retraining rule (credit_drift.retraining.policy) decides from this week's alerts and the retraining history."""
-    from credit_drift.monitoring.weekly import read_json
-    from credit_drift.retraining.policy import load_state, trigger_for
-
-    number = int(week)
-    alerts = (read_json(Path(f"{PROJECT}/artifacts/monitoring/week_{number:02d}/alerts.json")) or {}).get("alerts", [])
-    return "retrain" if trigger_for(number, alerts, load_state()) else "no_retraining"
+    """The retraining rule lives in the project (credit_drift.retraining.policy); ask it from the project's venv."""
+    answer = subprocess.run([PYTHON, "-m", "credit_drift.retraining.policy", "--week", str(int(week))],
+                            cwd=PROJECT, capture_output=True, text=True, check=True)
+    return "retrain" if answer.stdout.strip() else "no_retraining"
 
 
 def step(task_id: str, name: str, **kwargs) -> BashOperator:
