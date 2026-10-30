@@ -1034,7 +1034,7 @@
      {
       "matcher": {
        "id": "byName",
-       "options": "Value #A"
+       "options": "Value"
       },
       "properties": [
        {
@@ -1168,7 +1168,7 @@
      {
       "matcher": {
        "id": "byName",
-       "options": "Value #A"
+       "options": "Value"
       },
       "properties": [
        {
@@ -1395,7 +1395,7 @@
     "x": 0,
     "y": 26,
     "w": 24,
-    "h": 10
+    "h": 16
    },
    "targets": [
     {
@@ -1429,7 +1429,8 @@
        "type": "color-background",
        "mode": "basic"
       },
-      "align": "center"
+      "align": "center",
+      "width": 72
      },
      "thresholds": {
       "mode": "absolute",
@@ -1456,7 +1457,20 @@
       "mode": "thresholds"
      }
     },
-    "overrides": []
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "slice\\week"
+      },
+      "properties": [
+       {
+        "id": "custom.width",
+        "value": 210
+       }
+      ]
+     }
+    ]
    },
    "options": {
     "showHeader": true,
@@ -1472,7 +1486,7 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 36
+    "y": 42
    },
    "panels": [],
    "id": 18
@@ -1487,9 +1501,9 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 37,
+    "y": 43,
     "w": 8,
-    "h": 9
+    "h": 14
    },
    "targets": [
     {
@@ -1602,9 +1616,9 @@
    },
    "gridPos": {
     "x": 8,
-    "y": 37,
+    "y": 43,
     "w": 16,
-    "h": 9
+    "h": 14
    },
    "targets": [
     {
@@ -1708,7 +1722,7 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 46
+    "y": 57
    },
    "panels": [],
    "id": 21
@@ -1723,7 +1737,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 47,
+    "y": 58,
     "w": 8,
     "h": 7
    },
@@ -1879,7 +1893,7 @@
    },
    "gridPos": {
     "x": 8,
-    "y": 47,
+    "y": 58,
     "w": 8,
     "h": 7
    },
@@ -1928,7 +1942,7 @@
    },
    "gridPos": {
     "x": 16,
-    "y": 47,
+    "y": 58,
     "w": 8,
     "h": 7
    },

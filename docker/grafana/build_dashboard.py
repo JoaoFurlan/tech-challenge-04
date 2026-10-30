@@ -30,8 +30,10 @@ def steps(*pairs) -> dict:
     return {"mode": "absolute", "steps": [{"color": c, "value": v} for c, v in pairs]}
 
 
-def rename(ref: str, name: str) -> dict:
-    return {"matcher": {"id": "byName", "options": f"Value #{ref}"}, "properties": [{"id": "displayName", "value": name}]}
+def rename(ref: str, name: str, single: bool = False) -> dict:
+    """With a single query the value field is called "Value"; with several it is "Value #A", "Value #B"..."""
+    field = "Value" if single else f"Value #{ref}"
+    return {"matcher": {"id": "byName", "options": field}, "properties": [{"id": "displayName", "value": name}]}
 
 
 def row(title: str, y: int) -> dict:
@@ -58,7 +60,7 @@ def weekly_bars(title: str, series: list[tuple[str, str]], x: int, y: int, w: in
                 colors: list[str] | None = None) -> dict:
     """One bar group per week. `series` is a list of (metric expression, legend)."""
     targets = [table_target(padded(f"sum by (week) ({expr})"), chr(65 + i)) for i, (expr, _) in enumerate(series)]
-    overrides = [rename(chr(65 + i), legend) for i, (_, legend) in enumerate(series)]
+    overrides = [rename(chr(65 + i), legend, single=len(series) == 1) for i, (_, legend) in enumerate(series)]
     if colors:
         overrides += [{"matcher": {"id": "byName", "options": legend},
                        "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": colors[i]}}]}
@@ -97,9 +99,11 @@ def slice_matrix(x: int, y: int, w: int, h: int) -> dict:
                                                     "emptyValue": "null"}},
         ],
         "fieldConfig": {"defaults": {"decimals": 3, "custom": {"cellOptions": {"type": "color-background", "mode": "basic"},
-                                                             "align": "center"},
+                                                             "align": "center", "width": 72},
                                      "thresholds": steps((GREEN, None), (YELLOW, 0.03), (ORANGE, 0.06), (RED, 0.09)),
-                                     "color": {"mode": "thresholds"}}, "overrides": []},
+                                     "color": {"mode": "thresholds"}},
+                        "overrides": [{"matcher": {"id": "byName", "options": "slice\\week"},
+                                       "properties": [{"id": "custom.width", "value": 210}]}]},
         "options": {"showHeader": True, "cellHeight": "sm"},
     }
 
@@ -178,24 +182,24 @@ def build() -> dict:
                     desc="Covariate drift pushes the prediction up while the observed rate stays put: a calibration gap."),
 
         row("Where is it getting worse? (14 slices over two weeks)", 25),
-        slice_matrix(0, 26, 24, 10),
+        slice_matrix(0, 26, 24, 16),
 
-        row("What happened and why", 36),
-        colored_table("Diagnosed cause by week", "sum by (week, cause) (diagnosis)", ["week", "cause"], 0, 37, 8, 9, "cause",
+        row("What happened and why", 42),
+        colored_table("Diagnosed cause by week", "sum by (week, cause) (diagnosis)", ["week", "cause"], 0, 43, 8, 14, "cause",
                       {"covariate_shift": "orange", "concept_drift": "red", "technical": "purple", "label_shift": "blue",
                        "none": "green"},
                       "Week-over-week signals, not versus the Reference: features changed, score changed, performance dropped."),
-        colored_table("Alerts raised", "sum by (week, rule, severity) (alert_firing)", ["week", "rule", "severity"], 8, 37, 16, 9,
+        colored_table("Alerts raised", "sum by (week, rule, severity) (alert_firing)", ["week", "rule", "severity"], 8, 43, 16, 14,
                       "severity", {"critical": "red", "high": "orange", "medium": "yellow"},
                       "Each row is an alert about that week. Performance alerts appear a week after the week they describe."),
 
-        row("Contract and serving", 46),
+        row("Contract and serving", 57),
         weekly_bars("Contract outcome by week", [("batch_blocked", "blocked (1 = rejected)"), ("batch_contract_warnings", "warnings")],
-                    0, 47, 8, 7, decimals=0, colors=["red", "yellow"]),
+                    0, 58, 8, 7, decimals=0, colors=["red", "yellow"]),
         timeseries("Server requests per minute", 'sum by (outcome) (rate(predict_requests_total[5m])) * 60', "{{outcome}}",
-                   8, 47, 8, 7, desc="Scraped straight from the model server (the pull side of the push/pull pair)."),
+                   8, 58, 8, 7, desc="Scraped straight from the model server (the pull side of the push/pull pair)."),
         timeseries("Server latency, 95th percentile", "histogram_quantile(0.95, sum by (le) (rate(predict_latency_seconds_bucket[5m])))",
-                   "p95", 16, 47, 8, 7, unit="s"),
+                   "p95", 16, 58, 8, 7, unit="s"),
     ]
     for i, panel in enumerate(panels, start=1):
         panel["id"] = i
