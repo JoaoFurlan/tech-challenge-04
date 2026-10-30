@@ -32,7 +32,7 @@
    },
    "options": {
     "mode": "markdown",
-    "content": "**Weeks are simulated** (1 to 16) and are plotted as categories, not as time. Inputs and score describe week N the day it runs. **Performance and slices need labels, which arrive a week late**, so they show week N only after week N+1 has run (week 9's labels never arrive: its batch was blocked). Alerts repeat from week 5 because the drift baseline stays the champion's training window until a new model is promoted."
+    "content": "**Weeks are simulated** (1 to 16) and are plotted by week number on the x axis, not as time. Inputs and score describe week N the day it runs. **Performance and slices need labels, which arrive a week late**, so they show week N only after week N+1 has run (week 9's labels never arrive: its batch was blocked). Alerts repeat from week 5 because the drift baseline stays the champion's training window until a new model is promoted."
    },
    "id": 1
   },
@@ -430,7 +430,7 @@
    "id": 8
   },
   {
-   "type": "barchart",
+   "type": "trend",
    "title": "Drift severity by week (PSI)",
    "description": "PSI against the champion's training window. The lines mark 0.10 (moderate) and 0.25 (major).",
    "datasource": {
@@ -487,6 +487,17 @@
      }
     },
     {
+     "id": "convertFieldType",
+     "options": {
+      "conversions": [
+       {
+        "targetField": "week",
+        "destinationType": "number"
+       }
+      ]
+     }
+    },
+    {
      "id": "filterFieldsByName",
      "options": {
       "include": {
@@ -501,8 +512,12 @@
      "decimals": 2,
      "min": 0,
      "custom": {
-      "fillOpacity": 85,
-      "lineWidth": 1,
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 0,
+      "showPoints": "always",
+      "pointSize": 7,
+      "spanNulls": true,
       "thresholdsStyle": {
        "mode": "line"
       }
@@ -582,17 +597,31 @@
         }
        }
       ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "week"
+      },
+      "properties": [
+       {
+        "id": "min",
+        "value": 1
+       },
+       {
+        "id": "max",
+        "value": 16
+       },
+       {
+        "id": "decimals",
+        "value": 0
+       }
+      ]
      }
     ]
    },
    "options": {
     "xField": "week",
-    "orientation": "vertical",
-    "showValue": "auto",
-    "stacking": "none",
-    "groupWidth": 0.75,
-    "barWidth": 0.9,
-    "xTickLabelRotation": 0,
     "legend": {
      "displayMode": "list",
      "placement": "bottom",
@@ -606,7 +635,7 @@
    "id": 9
   },
   {
-   "type": "barchart",
+   "type": "trend",
    "title": "Monitored features past the limits",
    "description": "Of the 32 monitored features. Two at >= 0.10 raises a moderate alert; one at >= 0.25 a major one.",
    "datasource": {
@@ -663,6 +692,17 @@
      }
     },
     {
+     "id": "convertFieldType",
+     "options": {
+      "conversions": [
+       {
+        "targetField": "week",
+        "destinationType": "number"
+       }
+      ]
+     }
+    },
+    {
      "id": "filterFieldsByName",
      "options": {
       "include": {
@@ -677,8 +717,12 @@
      "decimals": 0,
      "min": 0,
      "custom": {
-      "fillOpacity": 85,
-      "lineWidth": 1
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 0,
+      "showPoints": "always",
+      "pointSize": 7,
+      "spanNulls": true
      },
      "color": {
       "mode": "palette-classic"
@@ -738,17 +782,31 @@
         }
        }
       ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "week"
+      },
+      "properties": [
+       {
+        "id": "min",
+        "value": 1
+       },
+       {
+        "id": "max",
+        "value": 16
+       },
+       {
+        "id": "decimals",
+        "value": 0
+       }
+      ]
      }
     ]
    },
    "options": {
     "xField": "week",
-    "orientation": "vertical",
-    "showValue": "auto",
-    "stacking": "none",
-    "groupWidth": 0.75,
-    "barWidth": 0.9,
-    "xTickLabelRotation": 0,
     "legend": {
      "displayMode": "list",
      "placement": "bottom",
@@ -762,7 +820,7 @@
    "id": 10
   },
   {
-   "type": "barchart",
+   "type": "trend",
    "title": "Score drift",
    "description": "How far the model's own score distribution moved from its held-out baseline.",
    "datasource": {
@@ -819,6 +877,17 @@
      }
     },
     {
+     "id": "convertFieldType",
+     "options": {
+      "conversions": [
+       {
+        "targetField": "week",
+        "destinationType": "number"
+       }
+      ]
+     }
+    },
+    {
      "id": "filterFieldsByName",
      "options": {
       "include": {
@@ -833,8 +902,12 @@
      "decimals": 3,
      "min": 0,
      "custom": {
-      "fillOpacity": 85,
-      "lineWidth": 1,
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 0,
+      "showPoints": "always",
+      "pointSize": 7,
+      "spanNulls": true,
       "thresholdsStyle": {
        "mode": "line"
       }
@@ -910,17 +983,31 @@
         }
        }
       ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "week"
+      },
+      "properties": [
+       {
+        "id": "min",
+        "value": 1
+       },
+       {
+        "id": "max",
+        "value": 16
+       },
+       {
+        "id": "decimals",
+        "value": 0
+       }
+      ]
      }
     ]
    },
    "options": {
     "xField": "week",
-    "orientation": "vertical",
-    "showValue": "auto",
-    "stacking": "none",
-    "groupWidth": 0.75,
-    "barWidth": 0.9,
-    "xTickLabelRotation": 0,
     "legend": {
      "displayMode": "list",
      "placement": "bottom",
@@ -947,7 +1034,7 @@
    "id": 12
   },
   {
-   "type": "barchart",
+   "type": "trend",
    "title": "AUC-PR by week",
    "description": "The green line is the champion's validation AUC-PR (0.246). A random model scores 0.081. One week of 5,000 applicants is noisy (about +-0.04).",
    "datasource": {
@@ -993,6 +1080,17 @@
      }
     },
     {
+     "id": "convertFieldType",
+     "options": {
+      "conversions": [
+       {
+        "targetField": "week",
+        "destinationType": "number"
+       }
+      ]
+     }
+    },
+    {
      "id": "filterFieldsByName",
      "options": {
       "include": {
@@ -1007,8 +1105,12 @@
      "decimals": 3,
      "min": 0,
      "custom": {
-      "fillOpacity": 85,
-      "lineWidth": 1,
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 0,
+      "showPoints": "always",
+      "pointSize": 7,
+      "spanNulls": true,
       "thresholdsStyle": {
        "mode": "line"
       }
@@ -1057,17 +1159,31 @@
         }
        }
       ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "week"
+      },
+      "properties": [
+       {
+        "id": "min",
+        "value": 1
+       },
+       {
+        "id": "max",
+        "value": 16
+       },
+       {
+        "id": "decimals",
+        "value": 0
+       }
+      ]
      }
     ]
    },
    "options": {
     "xField": "week",
-    "orientation": "vertical",
-    "showValue": "auto",
-    "stacking": "none",
-    "groupWidth": 0.75,
-    "barWidth": 0.9,
-    "xTickLabelRotation": 0,
     "legend": {
      "displayMode": "list",
      "placement": "bottom",
@@ -1081,7 +1197,7 @@
    "id": 13
   },
   {
-   "type": "barchart",
+   "type": "trend",
    "title": "Brier score by week",
    "description": "Lower is better. The line is the constant-default-rate guess (0.0745): a useful model stays below it.",
    "datasource": {
@@ -1127,6 +1243,17 @@
      }
     },
     {
+     "id": "convertFieldType",
+     "options": {
+      "conversions": [
+       {
+        "targetField": "week",
+        "destinationType": "number"
+       }
+      ]
+     }
+    },
+    {
      "id": "filterFieldsByName",
      "options": {
       "include": {
@@ -1141,8 +1268,12 @@
      "decimals": 4,
      "min": 0,
      "custom": {
-      "fillOpacity": 85,
-      "lineWidth": 1,
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 0,
+      "showPoints": "always",
+      "pointSize": 7,
+      "spanNulls": true,
       "thresholdsStyle": {
        "mode": "line"
       }
@@ -1191,17 +1322,31 @@
         }
        }
       ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "week"
+      },
+      "properties": [
+       {
+        "id": "min",
+        "value": 1
+       },
+       {
+        "id": "max",
+        "value": 16
+       },
+       {
+        "id": "decimals",
+        "value": 0
+       }
+      ]
      }
     ]
    },
    "options": {
     "xField": "week",
-    "orientation": "vertical",
-    "showValue": "auto",
-    "stacking": "none",
-    "groupWidth": 0.75,
-    "barWidth": 0.9,
-    "xTickLabelRotation": 0,
     "legend": {
      "displayMode": "list",
      "placement": "bottom",
@@ -1215,7 +1360,7 @@
    "id": 14
   },
   {
-   "type": "barchart",
+   "type": "trend",
    "title": "Predicted vs observed default rate",
    "description": "Covariate drift pushes the prediction up while the observed rate stays put: a calibration gap.",
    "datasource": {
@@ -1272,6 +1417,17 @@
      }
     },
     {
+     "id": "convertFieldType",
+     "options": {
+      "conversions": [
+       {
+        "targetField": "week",
+        "destinationType": "number"
+       }
+      ]
+     }
+    },
+    {
      "id": "filterFieldsByName",
      "options": {
       "include": {
@@ -1286,8 +1442,12 @@
      "decimals": 3,
      "min": 0,
      "custom": {
-      "fillOpacity": 85,
-      "lineWidth": 1
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 0,
+      "showPoints": "always",
+      "pointSize": 7,
+      "spanNulls": true
      },
      "color": {
       "mode": "palette-classic"
@@ -1347,17 +1507,31 @@
         }
        }
       ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "week"
+      },
+      "properties": [
+       {
+        "id": "min",
+        "value": 1
+       },
+       {
+        "id": "max",
+        "value": 16
+       },
+       {
+        "id": "decimals",
+        "value": 0
+       }
+      ]
      }
     ]
    },
    "options": {
     "xField": "week",
-    "orientation": "vertical",
-    "showValue": "auto",
-    "stacking": "none",
-    "groupWidth": 0.75,
-    "barWidth": 0.9,
-    "xTickLabelRotation": 0,
     "legend": {
      "displayMode": "list",
      "placement": "bottom",
@@ -1728,7 +1902,7 @@
    "id": 21
   },
   {
-   "type": "barchart",
+   "type": "trend",
    "title": "Contract outcome by week",
    "description": "",
    "datasource": {
@@ -1785,6 +1959,17 @@
      }
     },
     {
+     "id": "convertFieldType",
+     "options": {
+      "conversions": [
+       {
+        "targetField": "week",
+        "destinationType": "number"
+       }
+      ]
+     }
+    },
+    {
      "id": "filterFieldsByName",
      "options": {
       "include": {
@@ -1799,8 +1984,12 @@
      "decimals": 0,
      "min": 0,
      "custom": {
-      "fillOpacity": 85,
-      "lineWidth": 1
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 0,
+      "showPoints": "always",
+      "pointSize": 7,
+      "spanNulls": true
      },
      "color": {
       "mode": "palette-classic"
@@ -1860,17 +2049,31 @@
         }
        }
       ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "week"
+      },
+      "properties": [
+       {
+        "id": "min",
+        "value": 1
+       },
+       {
+        "id": "max",
+        "value": 16
+       },
+       {
+        "id": "decimals",
+        "value": 0
+       }
+      ]
      }
     ]
    },
    "options": {
     "xField": "week",
-    "orientation": "vertical",
-    "showValue": "auto",
-    "stacking": "none",
-    "groupWidth": 0.75,
-    "barWidth": 0.9,
-    "xTickLabelRotation": 0,
     "legend": {
      "displayMode": "list",
      "placement": "bottom",

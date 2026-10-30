@@ -424,7 +424,7 @@ same dashboard: `docker/grafana/provisioning/` (Prometheus datasource, dashboard
 script, rerun it, commit both).
 
 - **Weeks are labels, not time.** The simulated weeks are pushed in one afternoon, so a time axis would draw every
-  week at the same instant. Panels use the `week` label as the x axis (instant queries, join by `week`, sort). Weeks
+  week at the same instant. Panels are line charts (Trend panels) with the `week` label as a numeric x axis (instant queries, join by `week`, sort, convert to number). Weeks
   are zero-padded in the query (`label_replace`) so that 10 sorts after 9.
 - **Label delay is visible.** Panels that depend on labels (AUC-PR, Brier, observed rate, slice matrix, performance
   alerts) only have a week N once week N+1 has run; the dashboard shows that gap instead of hiding it. Week 9 has no

@@ -3,7 +3,7 @@
   uv run python docker/grafana/build_dashboard.py
 
 Why the queries look the way they do: the simulated weeks are LABELS on the metrics (`week="5"`), not timestamps, so
-the weekly panels use instant queries in table format and plot by the week label. Weeks are zero-padded in the query
+the weekly panels use instant queries in table format and plot by the week label (Trend panels, a numeric x axis). Weeks are zero-padded in the query
 (`05`, `10`) so they sort as numbers. Label-dependent panels (performance, slices) already show week N-1 at run N,
 because the DAG pushes them under the week they describe: they appear one week late by construction.
 """
@@ -55,32 +55,37 @@ def stat(title: str, expr: str, x: int, y: int, w: int, h: int, thresholds: dict
                         "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": False}}}
 
 
-def weekly_bars(title: str, series: list[tuple[str, str]], x: int, y: int, w: int, h: int, thresholds: dict | None = None,
+def weekly_lines(title: str, series: list[tuple[str, str]], x: int, y: int, w: int, h: int, thresholds: dict | None = None,
                 unit: str = "none", decimals: int | None = 3, minimum: float | None = 0, desc: str = "",
                 colors: list[str] | None = None) -> dict:
-    """One bar group per week. `series` is a list of (metric expression, legend)."""
+    """One line per series, the week number on the x axis (a Trend panel: numeric x, not time). `series` is a list of
+    (metric expression, legend)."""
     targets = [table_target(padded(f"sum by (week) ({expr})"), chr(65 + i)) for i, (expr, _) in enumerate(series)]
     overrides = [rename(chr(65 + i), legend, single=len(series) == 1) for i, (_, legend) in enumerate(series)]
     if colors:
         overrides += [{"matcher": {"id": "byName", "options": legend},
                        "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": colors[i]}}]}
                       for i, (_, legend) in enumerate(series)]
-    defaults = {"unit": unit, "decimals": decimals, "min": minimum, "custom": {"fillOpacity": 85, "lineWidth": 1},
+    defaults = {"unit": unit, "decimals": decimals, "min": minimum,
+                "custom": {"drawStyle": "line", "lineWidth": 2, "fillOpacity": 0, "showPoints": "always", "pointSize": 7,
+                           "spanNulls": True},  # week 9 has no labels: connect across it instead of breaking the line
                 "color": {"mode": "palette-classic"}}
+    overrides.append({"matcher": {"id": "byName", "options": "week"},
+                      "properties": [{"id": "min", "value": 1}, {"id": "max", "value": 16}, {"id": "decimals", "value": 0}]})
     if thresholds:
         defaults["thresholds"] = thresholds
         defaults["custom"]["thresholdsStyle"] = {"mode": "line"}
     return {
-        "type": "barchart", "title": title, "description": desc, "datasource": DS,
+        "type": "trend", "title": title, "description": desc, "datasource": DS,
         "gridPos": {"x": x, "y": y, "w": w, "h": h}, "targets": targets,
         "transformations": [
             {"id": "joinByField", "options": {"byField": "week", "mode": "outer"}},
             {"id": "sortBy", "options": {"fields": {}, "sort": [{"field": "week"}]}},
+            {"id": "convertFieldType", "options": {"conversions": [{"targetField": "week", "destinationType": "number"}]}},
             {"id": "filterFieldsByName", "options": {"include": {"pattern": "^(week|Value.*)$"}}},
         ],
         "fieldConfig": {"defaults": defaults, "overrides": overrides},
-        "options": {"xField": "week", "orientation": "vertical", "showValue": "auto", "stacking": "none",
-                    "groupWidth": 0.75, "barWidth": 0.9, "xTickLabelRotation": 0,
+        "options": {"xField": "week",
                     "legend": {"displayMode": "list", "placement": "bottom", "showLegend": True},
                     "tooltip": {"mode": "multi", "sort": "none"}},
     }
@@ -144,7 +149,7 @@ def build() -> dict:
     psi_lines = steps((GREEN, None), (ORANGE, 0.10), (RED, 0.25))
     panels = [
         text("How to read this dashboard",
-             "**Weeks are simulated** (1 to 16) and are plotted as categories, not as time. Inputs and score describe "
+             "**Weeks are simulated** (1 to 16) and are plotted by week number on the x axis, not as time. Inputs and score describe "
              "week N the day it runs. **Performance and slices need labels, which arrive a week late**, so they show week N "
              "only after week N+1 has run (week 9's labels never arrive: its batch was blocked). Alerts repeat from week 5 "
              "because the drift baseline stays the champion's training window until a new model is promoted.",
@@ -159,25 +164,25 @@ def build() -> dict:
         stat("Applicants scored by the server", "sum(predict_rows_total)", 20, 3, 4, 4, steps((GREEN, None)), 0),
 
         row("Inputs and score (describe week N, no labels needed)", 7),
-        weekly_bars("Drift severity by week (PSI)", [("drift_max_psi", "worst feature"), ("drift_mean_psi", "mean of monitored")],
+        weekly_lines("Drift severity by week (PSI)", [("drift_max_psi", "worst feature"), ("drift_mean_psi", "mean of monitored")],
                     0, 8, 8, 8, psi_lines, decimals=2, colors=["red", "blue"],
                     desc="PSI against the champion's training window. The lines mark 0.10 (moderate) and 0.25 (major)."),
-        weekly_bars("Monitored features past the limits", [("drift_n_psi_moderate", "PSI >= 0.10"), ("drift_n_psi_major", "PSI >= 0.25")],
+        weekly_lines("Monitored features past the limits", [("drift_n_psi_moderate", "PSI >= 0.10"), ("drift_n_psi_major", "PSI >= 0.25")],
                     8, 8, 8, 8, decimals=0, colors=["orange", "red"],
                     desc="Of the 32 monitored features. Two at >= 0.10 raises a moderate alert; one at >= 0.25 a major one."),
-        weekly_bars("Score drift", [("drift_score_psi", "score PSI"), ("drift_score_ks", "score KS")], 16, 8, 8, 8,
+        weekly_lines("Score drift", [("drift_score_psi", "score PSI"), ("drift_score_ks", "score KS")], 16, 8, 8, 8,
                     steps((GREEN, None), (ORANGE, 0.10)), decimals=3, colors=["purple", "blue"],
                     desc="How far the model's own score distribution moved from its held-out baseline."),
 
         row("Performance (labels arrive a week late)", 16),
-        weekly_bars("AUC-PR by week", [("model_auc_pr", "AUC-PR")], 0, 17, 8, 8,
+        weekly_lines("AUC-PR by week", [("model_auc_pr", "AUC-PR")], 0, 17, 8, 8,
                     steps(("transparent", None), (GREEN, BASELINE_AUC_PR)), decimals=3, colors=["blue"],
                     desc=f"The green line is the champion's validation AUC-PR ({BASELINE_AUC_PR}). A random model scores 0.081. "
                          "One week of 5,000 applicants is noisy (about +-0.04)."),
-        weekly_bars("Brier score by week", [("model_brier", "Brier")], 8, 17, 8, 8,
+        weekly_lines("Brier score by week", [("model_brier", "Brier")], 8, 17, 8, 8,
                     steps(("transparent", None), (GREEN, 0.0745)), decimals=4, colors=["purple"],
                     desc="Lower is better. The line is the constant-default-rate guess (0.0745): a useful model stays below it."),
-        weekly_bars("Predicted vs observed default rate", [("model_mean_pred", "predicted"), ("model_observed_rate", "observed")],
+        weekly_lines("Predicted vs observed default rate", [("model_mean_pred", "predicted"), ("model_observed_rate", "observed")],
                     16, 17, 8, 8, decimals=3, minimum=0, colors=["blue", "orange"],
                     desc="Covariate drift pushes the prediction up while the observed rate stays put: a calibration gap."),
 
@@ -194,7 +199,7 @@ def build() -> dict:
                       "Each row is an alert about that week. Performance alerts appear a week after the week they describe."),
 
         row("Contract and serving", 57),
-        weekly_bars("Contract outcome by week", [("batch_blocked", "blocked (1 = rejected)"), ("batch_contract_warnings", "warnings")],
+        weekly_lines("Contract outcome by week", [("batch_blocked", "blocked (1 = rejected)"), ("batch_contract_warnings", "warnings")],
                     0, 58, 8, 7, decimals=0, colors=["red", "yellow"]),
         timeseries("Server requests per minute", 'sum by (outcome) (rate(predict_requests_total[5m])) * 60', "{{outcome}}",
                    8, 58, 8, 7, desc="Scraped straight from the model server (the pull side of the push/pull pair)."),
