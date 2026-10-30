@@ -1,0 +1,67 @@
+{
+ "champion_version": "1",
+ "effective_sample_size": 17085.27246450307,
+ "reference_test_rows": 41503,
+ "weeks": {
+  "covariate_regime": [
+   5,
+   6,
+   7
+  ],
+  "concept_weeks": [
+   8,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16
+  ]
+ },
+ "point": {
+  "baseline": 0.24634309379919206,
+  "reweighted_reference": 0.26213019475575844,
+  "production_covariate_regime": 0.26055519118583037,
+  "production_concept_weeks": 0.19224352852417226,
+  "covariate_effect": -0.01578710095656638,
+  "unexplained_covariate_regime": 0.0015750035699280684,
+  "unexplained_concept_weeks": 0.06988666623158618,
+  "total_drop_concept_weeks": 0.0540995652750198
+ },
+ "ci95": {
+  "baseline": [
+   0.233010836716286,
+   0.2603896592203829
+  ],
+  "reweighted_reference": [
+   0.2415514785103283,
+   0.28063900045268764
+  ],
+  "production_covariate_regime": [
+   0.23700500644465974,
+   0.2825187083258929
+  ],
+  "production_concept_weeks": [
+   0.18244299434472058,
+   0.20340783962304937
+  ],
+  "covariate_effect": [
+   -0.02821118245770039,
+   -0.0027525417007436366
+  ],
+  "unexplained_covariate_regime": [
+   -0.02825424918442032,
+   0.030130884900143484
+  ],
+  "unexplained_concept_weeks": [
+   0.04446822970129017,
+   0.09209521496012434
+  ],
+  "total_drop_concept_weeks": [
+   0.03643322425111918,
+   0.07117542107721868
+  ]
+ },
+ "n_bootstrap": 200
+}

@@ -1,0 +1,30 @@
+{
+ "F": {
+  "rows": 27387,
+  "observed_default_rate": 0.07028882316427502,
+  "mean_predicted": 0.07416050797469789,
+  "flag_rate": 0.09946324898674554,
+  "recall": 0.3496103896103896,
+  "false_positive_rate": 0.08055140994423061,
+  "auc_pr": 0.22507198266379402
+ },
+ "M": {
+  "rows": 14116,
+  "observed_default_rate": 0.10187021819212241,
+  "mean_predicted": 0.09409562270316844,
+  "flag_rate": 0.16052706149050722,
+  "recall": 0.4325452016689847,
+  "false_positive_rate": 0.12967345007098913,
+  "auc_pr": 0.2748824407940156
+ },
+ "gaps_M_minus_F": {
+  "flag_rate": 0.0611,
+  "recall": 0.0829,
+  "false_positive_rate": 0.0491,
+  "auc_pr": 0.0498
+ },
+ "flag_rate_ratio_M_over_F": 1.614,
+ "model_version": "1",
+ "threshold": 0.166667,
+ "rows_other_code": 0
+}

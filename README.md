@@ -3,8 +3,28 @@
 Camada de sustentação e confiabilidade (contratos de dados, detecção de drift, observabilidade
 e governança LGPD) em torno de um modelo de credit scoring. Projeto do Tech Challenge — Fase 4.
 
-> Em construção. O plano de implementação está em `docs/build-plan.md` e as decisões de
-> arquitetura em `CLAUDE.md`.
+**Cenário.** Uma fintech de crédito tem um modelo de credit scoring em produção e suspeita de degradação silenciosa depois
+de mudanças econômicas. Este repositório constrói a camada de **sustentação e confiabilidade** ao redor desse modelo: contratos
+de dados, simulação e detecção de drift (de dados e de conceito) ao longo de 16 semanas sintéticas, observabilidade, retreino com
+portão de promoção e governança (LGPD) com análise causal. Conjunto de dados: Home Credit Default Risk (`application_train.csv`,
+307 mil linhas, classificação binária). O plano de implementação está em `docs/build-plan.md`, as decisões em
+`docs/decisions.md` e `CLAUDE.md`.
+
+### Mapa do README pela rubrica do Tech Challenge
+
+| Critério (peso) | Onde está |
+|---|---|
+| **Validação de dados** (25%) | [Contratos de dados](#contratos-de-dados): Pandera na entrada e Great Expectations com Data Docs (`docs/reports/data_docs/index.html`); lote corrompido bloqueado (`uv run python -m credit_drift.contracts.demo`) e bloqueio no laço de produção (semana 9) |
+| **Detecção de drift** (25%) | [Simulação de drift](#simulação-de-drift) (cronograma e verdade em `docs/reports/drift_spec.json`), [Detecção de drift](#detecção-de-drift) (PSI, KS, qui-quadrado, JS com Evidently, relatórios HTML em `docs/reports/drift/`) e [Calibração dos limiares](#calibração-dos-limiares) |
+| **Observabilidade e logs** (20%) | [Dashboard (Grafana)](#dashboard-grafana), [Métricas de saúde operacionais](#métricas-de-saúde-operacionais), [Monitoramento semanal](#monitoramento-semanal-airflow), experimentos e registro no MLflow, DAGs no Airflow |
+| **Governança (LGPD)** (15%) | [Governança e LGPD](#governança-e-lgpd) (dados pessoais, base legal, retenção, viés) e [Causalidade](#causalidade) |
+| **Vídeo STAR** (15%) | [Vídeo](#vídeo-star) |
+
+Requisitos obrigatórios do desafio: pipeline de validação (contratos), scripts de simulação e detecção estatística de drift,
+dashboards e relatórios HTML, governança consolidada neste README e histórico de commits semânticos. Boas práticas: Referência
+e Produção separadas em arquivos distintos; mais de três regras rígidas de qualidade (idade 18–100, renda não nula e positiva,
+sem IDs duplicados, esquema e tipos, valores positivos); relatório estatístico de mudança de distribuição (PSI e KS); plano de
+privacidade.
 
 ## Reproduzindo do zero
 
@@ -164,6 +184,23 @@ alertas por semana, o resultado do contrato de dados e tráfego/latência do ser
 `week`), e os painéis que dependem de rótulos só mostram a semana N depois da semana N+1, refletindo o atraso real.
 Decisões em `docs/decisions.md` (seção 15).
 
+### Métricas de saúde operacionais
+
+Documentadas aqui porque a Etapa 3 pede as métricas de saúde escolhidas. Todas chegam ao Prometheus (Pushgateway para as
+tarefas em lote do Airflow, `/metrics` para o servidor) e aparecem no Grafana.
+
+| Dimensão | Métrica | O que mostra |
+|---|---|---|
+| Execução do pipeline | estado de cada tarefa do DAG (Airflow), `batch_blocked`, `batch_contract_warnings` | sucesso ou falha na ingestão e nas transformações; lote bloqueado pelo contrato |
+| Volume de dados | `batch_rows`, `predict_rows_total`, `predict_requests_total` | linhas processadas por semana e tráfego do servidor |
+| Latência e infraestrutura | `predict_latency_seconds` (histograma, p95 no painel), `model_info`, `model_reloads_total` | estabilidade e tempo de resposta do servidor, versão servida |
+| Drift de dados | `drift_max_psi`, `drift_mean_psi`, `drift_n_psi_moderate/major`, `drift_score_psi/ks`, `drift_feature_psi/ks` | quanto as entradas e o score se afastaram da janela de treino do campeão |
+| Desempenho do modelo (com rótulos, uma semana depois) | `model_auc_pr`, `model_brier`, `model_mean_pred`, `model_observed_rate`, `slice_auc_pr` | queda de AUC-PR, calibração e fatias piores |
+| Alertas e diagnóstico | `alert_firing{rule,severity}`, `diagnosis{cause}` | quantos alertas e a causa provável por semana |
+
+Os logs de execução ficam no Airflow (por tarefa e por tentativa) e cada semana gera uma execução no experimento
+`production_monitoring` do MLflow com as métricas e os artefatos.
+
 ## Retreino e recalibração
 
 O `retraining_pipeline` roda dentro do laço, com atraso de rótulos de **uma semana**: dispara no primeiro alerta forte de
@@ -303,7 +340,148 @@ uv run python -m credit_drift.contracts.demo
 
 O relatório gerado está em `docs/reports/data_docs/index.html`.
 
-## Dados e privacidade (LGPD)
+## Causalidade
+
+A pergunta da diretoria é "o que causou a degradação?". Com um simulador, temos a verdade do que foi injetado (`drift_spec.json`),
+então dá para comparar causa injetada, causa atribuída pelos detectores e causa estimada por contrafactual. A verdade só é usada
+**offline** (`notebooks/04_drift_evaluation.ipynb`, HTML em `docs/reports/`); em produção ela não existe, e o equivalente seria
+histórico de incidentes.
+
+**1. Injetado contra detectado** (execução de referência, 16 semanas, PSI ≥ 0,10).
+
+| Semanas | O que foi injetado | O que o laço atribuiu |
+|---|---|---|
+| 1–2 | nada (controle) | nenhum alerta, nenhuma variável sinalizada |
+| 3–4 | renda ×0,90 → ×0,86, emprego ×0,92 → ×0,85, mistura de tipos de renda começa | covariáveis; primeiro alerta (moderado) na semana 4, forte na 5 |
+| 5 | parcela ×1,15 e mistura completa | covariáveis, `data_drift_major` (parcela/crédito e parcela/renda) |
+| 6–7 | o regime da semana 5 continua | "nada": o novo normal parou de mudar |
+| 8, 10–16 | drift de conceito num segmento (≈ 26% dos clientes), sem mudar nenhuma entrada | conceito, **mas só quando os rótulos chegam** (semana 8 com atraso: a média de 3 semanas ainda não caíra) |
+| 9 | lote corrompido | técnico (contrato bloqueou) |
+
+Precisão de 100% (nenhum falso positivo em 16 semanas) e **recall de ≈ 0,38**: dos oito sinais injetados ou derivados, o PSI nomeia
+a razão parcela/crédito, a razão parcela/renda e a renda. O tempo de emprego (PSI ≈ 0,05) e a mistura de tipos de renda (≈ 0,03)
+mudaram de verdade, mas ficam abaixo da faixa de 0,10. O diagnóstico semana a semana acerta 14 das 15 semanas avaliáveis.
+
+**2. Contrafactual por reponderação de importância.** Reponderamos a Referência para que suas variáveis se pareçam com as da
+produção e medimos o AUC-PR do campeão nela: é o que **as entradas deslocadas, sozinhas**, produziriam.
+
+| | AUC-PR | IC 95% |
+|---|---|---|
+| Referência (base) | 0,246 | 0,233 a 0,260 |
+| Referência reponderada (efeito das entradas) | 0,262 | 0,242 a 0,281 |
+| Produção, semanas 5–7 (só covariáveis) | 0,261 | 0,237 a 0,283 |
+| Produção, semanas 8 e 10–16 (drift de conceito) | **0,192** | 0,182 a 0,203 |
+
+Nas semanas 5–7 as entradas explicam **tudo** (diferença de 0,002, intervalo que inclui zero): o choque de covariáveis não
+custou desempenho, até o elevou levemente. Nas semanas de conceito, as variáveis são idênticas às das semanas 5–7, e ainda assim
+o AUC-PR cai **0,070** (IC 95% 0,045 a 0,092) em relação ao que as entradas dariam. Esse resíduo só pode vir da relação entre
+variáveis e resposta: **a causa da degradação de desempenho é o drift de conceito**, e é por isso que PSI e KS não o veem.
+
+**3. O que ajudou.** Recalibrar não muda o AUC-PR; reajustar o modelo ajuda só depois de várias semanas rotuladas do regime novo
+(seção Retreino e recalibração). Mitigações enquanto os rótulos amadurecem, não implementadas: limiares mais rígidos ou revisão manual
+no segmento afetado, reduzir o peso das variáveis afetadas e ponderar dados recentes no próximo retreino.
+
+Limite assumido: a atribuição causal aqui é validada contra um simulador (mesmos tipos de drift, mesmo segmento). Em produção a
+causa teria de ser investigada com dados de negócio, não só com métricas.
+
+## Governança e LGPD
+
+> **Ressalva.** O conjunto de dados é público (Home Credit, Kaggle) e não identifica titulares brasileiros: a LGPD não se aplica a
+> ele em si. O projeto o trata **como se** fossem dados de clientes de uma fintech brasileira, e este plano descreve o que seria
+> feito em produção. É documentação de engenharia, **não parecer jurídico**: os pontos marcados com (*) pedem validação do
+> jurídico e do encarregado (DPO) antes de uso real.
+
+### Inventário e classificação dos dados
+
+| Categoria | Colunas (exemplos) | Classificação |
+|---|---|---|
+| Identificador | `SK_ID_CURR` | chave pseudonimizada; sem nome, CPF, endereço ou contato. Nunca entra no modelo |
+| Dados pessoais comuns | idade (`DAYS_BIRTH`), renda, tempo de emprego, escolaridade, ocupação, tipo de organização, dados do crédito pedido | dado pessoal (art. 5º, I) |
+| Dado com risco de discriminação | `CODE_GENDER` | **não é entrada do modelo** (`training/features.py`); permanece no dado só para a verificação de viés |
+| Scores externos | `EXT_SOURCE_1/2/3` | vêm de terceiros; origem e base legal de uso precisam ser rastreáveis (*) |
+| Região e moradia | indicadores agregados do imóvel e da região | dado pessoal de baixo risco |
+| Alvo | `TARGET` (inadimplência) | rótulo, chega com atraso |
+
+Nenhuma coluna é dado pessoal **sensível** no sentido do art. 5º, II (origem racial ou étnica, saúde, vida sexual, convicções,
+biometria etc.), portanto o art. 11 não se aplica; gênero e idade pedem cuidado com o princípio da não discriminação.
+
+### Como os dados pessoais foram tratados neste projeto
+
+- **Minimização (art. 6º, III).** O ID e o gênero são excluídos das entradas do modelo; só colunas necessárias para o escore
+  entram; o ID serve apenas como chave de junção entre as features e os rótulos.
+- **Dados fora do git e controle de acesso.** O git guarda só ponteiros do DVC; os dados ficam num bucket privado (bloqueio de
+  acesso público, criptografia em repouso, usuário IAM restrito). As interfaces (Airflow, MLflow, Grafana, Prometheus) escutam
+  apenas em 127.0.0.1 e são acessadas por túnel SSH; na AWS, grupos de segurança limitados ao IP do operador.
+- **Nenhuma linha de cliente em saídas.** Relatórios, notebooks, métricas, MLflow e logs guardam agregados (distribuições,
+  métricas, hashes do conjunto de dados), nunca linhas. O servidor valida cada requisição com o contrato e, ao rejeitar, cita
+  as regras quebradas e nunca os valores.
+- **Quarentena.** O lote rejeitado pelo contrato é guardado à parte (`artifacts/monitoring/quarantine`) para o dono do dado;
+  ele **contém linhas de clientes** e por isso tem acesso restrito e retenção curta (tabela abaixo).
+- **Rastreabilidade (art. 6º, X e art. 37).** `mlflow.log_input()` liga cada modelo ao hash do conjunto de dados, o registro de
+  modelos guarda versões, janela de treino e resultado do portão, o DVC fixa os dados de cada semana e o Great Expectations gera
+  as Data Docs (relatório de auditoria).
+- **Segredos.** Nenhuma credencial no repositório; quem replica o projeto usa a opção A ou as próprias credenciais.
+
+### Base legal para a decisão de crédito
+
+| Tratamento | Base legal (LGPD, art. 7º) | Observação |
+|---|---|---|
+| Avaliar o pedido de crédito e pontuar o cliente | **V** (execução de contrato ou procedimentos preliminares a pedido do titular) e **X** (proteção ao crédito) | bases principais; consentimento seria frágil, pois pode ser revogado |
+| Monitorar e melhorar o modelo (drift, retreino) | **IX** (legítimo interesse do controlador) | exige teste de balanceamento e minimização; usa os mesmos dados do escore (*) |
+| Guardar registros para auditoria e obrigações do setor financeiro | **II** (obrigação legal ou regulatória) | prazos definidos pela regulação aplicável (*) |
+
+**Decisão automatizada (art. 20).** O titular pode pedir a revisão de decisões tomadas unicamente com base em tratamento
+automatizado que afetem seus interesses, inclusive de crédito, e o controlador deve informar os critérios e procedimentos (respeitados
+os segredos comercial e industrial). Consequências de projeto: o escore é só uma recomendação (`high_risk` quando a probabilidade
+atinge 1/6, o limiar de custo documentado); a decisão final deve ter fluxo de revisão por analista; o modelo é versionado e suas
+variáveis, explicáveis. Esse fluxo de revisão **não está implementado** aqui (*).
+
+**Princípios aplicados (art. 6º).** Finalidade e adequação: os dados servem só ao escore e ao monitoramento. Necessidade:
+minimização acima. Qualidade dos dados: contratos de dados bloqueiam lotes ruins e o monitoramento acompanha a degradação.
+Segurança e prevenção: acesso restrito, sem linhas em saídas, alertas de degradação. Não discriminação: verificação de viés
+abaixo. Responsabilização: linhagem, registro de modelos e relatórios.
+
+### Direitos dos titulares (art. 18)
+
+Acesso, correção, anonimização, bloqueio ou eliminação, portabilidade e informação sobre compartilhamento dependem do sistema de
+origem; este projeto os apoia assim: os dados de treino e de produção são versionados por semana, então um titular que peça
+eliminação pode ser retirado da janela do próximo retreino (`retraining/window.py` controla quais semanas entram); modelos já
+treinados deixam de conter o dado depois do próximo retreino (*). A revisão de decisões automatizadas está descrita acima.
+
+### Plano de retenção (proposta, a validar (*))
+
+| Artefato | Contém dado pessoal? | Retenção proposta | Motivo |
+|---|---|---|---|
+| Dados brutos e Referência de treino | sim | enquanto durar a finalidade e a obrigação legal; depois eliminação ou anonimização (art. 15 e 16) | prazos legais do setor definem o teto |
+| Lotes semanais de produção (features e rótulos) | sim | até a maior janela de retreino (proposta: 12 meses) | o retreino usa as semanas rotuladas |
+| **Lote em quarentena** | sim | 30 dias, só para o dono do dado analisar | evita guardar dado rejeitado sem finalidade |
+| Escores por cliente | sim (indiretamente) | prazo de auditoria e de revisão de decisão (art. 20) | permite reconstruir a decisão |
+| Métricas, relatórios, notebooks, modelos | não (agregados) | longa, como evidência de auditoria | sem dado pessoal |
+| Logs do pipeline | não (sem valores) | 90 dias (proposta) | diagnóstico operacional |
+
+### Mitigação de vieses
+
+`CODE_GENDER` não entra no modelo, mas a verificação de viés exige medir por gênero. Resultado do campeão (v1) na parte de teste
+da Referência, no limiar de decisão (1/6), calculado por `credit_drift.monitoring.fairness` (`docs/calibration/fairness.json`):
+
+| Grupo | Linhas | Inadimplência observada | Probabilidade média | Sinalizados como alto risco | Recall | Falso positivo | AUC-PR |
+|---|---|---|---|---|---|---|---|
+| Mulheres (F) | 27.387 | 7,0% | 7,4% | 9,9% | 35,0% | 8,1% | 0,225 |
+| Homens (M) | 14.116 | 10,2% | 9,4% | 16,1% | 43,3% | 13,0% | 0,275 |
+
+Os homens são sinalizados **1,61 vez** mais, e a taxa de falso positivo deles é maior (13,0% contra 8,1%): clientes homens que
+**não** inadimplem são barrados com mais frequência. Parte da diferença acompanha a inadimplência observada de cada grupo (10,2%
+contra 7,0%), e o modelo subestima um pouco os homens (9,4% previsto contra 10,2% observado), mas a disparidade nas taxas de erro é
+um risco de discriminação indireta que **o gênero estar fora do modelo não elimina**: outras colunas podem servir de proxy.
+Isso é um achado a levar ao jurídico e ao comitê de risco (*), não algo que este projeto resolve.
+
+O que existe: o gênero é uma fatia do monitoramento semanal (a matriz do Grafana mostra a queda de AUC-PR por gênero a cada semana),
+então uma piora desigual aparece. O que **não** foi feito, por exigir decisão de negócio e jurídica: remover variáveis proxy,
+reponderar o treino, ou limiares por grupo (que, em crédito, podem ser eles mesmos discriminatórios). Limite assumido: só há
+gênero binário no dado, e outras características protegidas (idade, por exemplo) não foram auditadas por grupo.
+
+### Acesso e reprodução dos dados
+
 
 O projeto trata os dados como se fossem dados reais de clientes de uma fintech, mesmo sendo um
 conjunto público, e a estrutura de reprodução segue esse princípio:
@@ -318,3 +496,10 @@ conjunto público, e a estrutura de reprodução segue esse princípio:
   original.
 - **Sem dados pessoais nas saídas:** relatórios, notebooks e logs versionados não exibem linhas
   brutas de clientes.
+
+## Vídeo STAR
+
+Link do vídeo (até 5 minutos, método STAR): _a ser inserido depois da gravação_. Roteiro em preparação: **Situation** (o risco da
+degradação silenciosa de modelos de crédito), **Task** (interceptar dados ruins, detectar drift, garantir conformidade),
+**Action** (Pandera e Great Expectations, Evidently, Prometheus e Grafana, simulação de 16 semanas, governança) e **Result**
+(o painel mostrando o drift, os alertas, o diagnóstico e as lições aprendidas).

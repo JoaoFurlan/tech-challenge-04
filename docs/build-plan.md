@@ -161,7 +161,7 @@ Ordered implementation plan for the Tech Challenge 4 project. Design decisions l
 ## Phase 6 - Documentation and cloud
 
 ### 17. Causal analysis and governance [R]
-- [ ] **Claude:** use the evaluation notebook for injected-vs-detected and counterfactual
+- [x] **Claude:** use the evaluation notebook for injected-vs-detected and counterfactual
       numbers; README in Portuguese with LGPD plan (PII handling, legal basis for credit
       decisions, retention, bias check from the gender slice); HTML exports.
 - [ ] **You:** review the legal/governance text, since it carries your name.

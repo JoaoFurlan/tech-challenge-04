@@ -571,3 +571,30 @@ covered by unit tests with a stubbed registry and server.
 - Caveat on the 0.011: weeks 14-16 are unseen by every model, but they informed the post-hoc design change above, so treat
   the effect size as indicative, not as a clean test.
 - The static reference lines on the dashboard stay valid because the champion never changed.
+
+## 19. Causal analysis, governance text and the bias check (step 17)
+
+README (Portuguese) now follows the challenge rubric: a map from each criterion to its section, the operational health metrics
+table (Etapa 3), `Causalidade`, `Governança e LGPD` and a placeholder for the video link. Code: `monitoring/causal.py`,
+`monitoring/fairness.py`; data in `docs/calibration/` (`reference_run.json`: per-week alerts, diagnoses, performance and
+per-feature PSI of the reference run, aggregates only; `counterfactual.json`; `fairness.json`); notebook 04 gained the two
+causal sections.
+
+**Causal analysis.**
+- Injected vs detected (PSI >= 0.10, 16 weeks): no false positive anywhere and none in the control weeks (precision 100%);
+  recall about 0.38, because the detectors name the annuity ratios and income but not the employment shift (PSI about 0.05)
+  or the income-type mix (about 0.03). Diagnosis right in 14 of 15 evaluable weeks.
+- Importance reweighting (logistic density-ratio, Reference test reweighted to the weeks 5-7 regime): the reweighted Reference
+  AUC-PR (0.262) matches production in weeks 5-7 (0.261; unexplained 0.002, interval includes zero), so the covariate regime
+  explains that period fully. In the concept weeks production is 0.192, so 0.070 (95% interval 0.045 to 0.092) is not explained
+  by the inputs: concept drift. This uses ground truth only to choose the comparison regime; it is offline.
+
+**Bias check.** The champion never sees gender, yet at the 1/6 threshold men are flagged 16.1% against 9.9% for women (ratio
+1.61), with a false-positive rate of 13.0% against 8.1% and recall 43% against 35%. Observed default rates are 10.2% and
+7.0%, so part of it follows the base rates, but the error-rate gap is a possible indirect discrimination that excluding the
+column does not remove. Not mitigated here (needs business and legal decisions); monitored weekly through the gender slices.
+
+**Items flagged for legal review** (marked (*) in the README): the legal bases chosen (art. 7 V, X, IX and II), the retention
+periods (proposals, not legal advice), the art. 20 review flow (not implemented), the provenance of the external scores
+`EXT_SOURCE_*`, and the bias finding above. The dataset is public and not Brazilian customer data, so LGPD does not apply to it
+itself; the plan is written as if it did.
