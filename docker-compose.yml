@@ -151,6 +151,10 @@ services:
     image: prom/pushgateway:v1.11.1
     profiles: ["monitoring"]
     restart: ${RESTART_POLICY:-no}
+    # Pushed once per weekly run, so keep it across restarts: otherwise a reboot would empty the dashboard.
+    command: ["--persistence.file=/pushgateway/metrics.bin"]
+    volumes:
+      - pushgatewaydata:/pushgateway
     ports:
       - "127.0.0.1:9091:9091"
 
@@ -169,9 +173,32 @@ services:
     depends_on:
       - pushgateway
 
+  grafana:
+    image: grafana/grafana:12.1.0
+    profiles: ["monitoring"]
+    restart: ${RESTART_POLICY:-no}
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}  # dev default: set a real one before sharing
+      # Reached only through the SSH tunnel, so anonymous read-only access keeps screenshots and the video simple.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/credit-scoring.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - prometheus
+
 volumes:
   pgdata:
   mlartifacts:
   airflowdb:
   airflow_logs:
   prometheusdata:
+  pushgatewaydata:
+  grafanadata:
