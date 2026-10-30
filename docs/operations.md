@@ -76,6 +76,13 @@ dashboard "Credit scoring: drift and reliability" is the home page. It is genera
 and Grafana picks the file up within about 30 seconds. If the Pushgateway is ever recreated without its volume, repush
 the weeks with `weekly push --week N` (see decision 15).
 
+## Calibration (offline)
+
+`python -m credit_drift.monitoring.calibration --seed N` (needs `MLFLOW_TRACKING_URI`, reads the champion from the
+registry) simulates seed N in memory and writes `docs/calibration/seed_N.json`, about 2 minutes on the laptop. The
+official seed 42 is refused. `credit_drift.monitoring.replay` reruns the rules over those files; the thresholds
+are frozen (decision #16), so run it to evaluate a change, not to retune on the official run.
+
 ## Heavy runs
 
 Run them on the box so the laptop does not run out of memory:

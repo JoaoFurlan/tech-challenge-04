@@ -133,8 +133,9 @@ Ordered implementation plan for the Tech Challenge 4 project. Design decisions l
 ## Phase 4 - Calibrate, then the full local run
 
 ### 14. Calibrate detector thresholds
-- [ ] **Claude:** in `04_drift_evaluation`, tune thresholds on one simulation, validate on a
-      second seed, then freeze them in a versioned config.
+- [x] **Claude:** in `04_drift_evaluation`, tune thresholds on one simulation, validate on a
+      second seed, then freeze them in a versioned config. (Done with four seeds: 101 and 202 to tune,
+      303 and 404 to validate; decision #16.)
 - [ ] **You:** review and approve the frozen thresholds.
 - **Why:** evidence-based thresholds without tuning on the official run.
 

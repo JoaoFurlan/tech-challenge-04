@@ -164,6 +164,17 @@ alertas por semana, o resultado do contrato de dados e tráfego/latência do ser
 `week`), e os painéis que dependem de rótulos só mostram a semana N depois da semana N+1, refletindo o atraso real.
 Decisões em `docs/decisions.md` (seção 15).
 
+## Calibração dos limiares
+
+Os limiares dos alertas foram calibrados **offline** em simulações com sementes diferentes da oficial: 101 e 202 para
+escolher, 303 e 404 para validar uma única vez (`notebooks/04_drift_evaluation.ipynb`, HTML em `docs/reports/`;
+decisão #16). Resultado: nenhum falso alarme nas semanas de controle, drift de conceito detectado em 5/5 e 4/5 das
+semanas nas sementes de validação e diagnóstico correto em 13/13 e 12/13. A regra de desempenho passou a olhar a
+**média de 3 semanas** do AUC-PR com margem de 1,645 erro-padrão, porque uma semana isolada (±0,04) tem o mesmo tamanho
+da queda injetada. Limitações assumidas: a semana 8 pode ser detectada com um a dois semanas de atraso, o alerta de
+fatia é fraco (a matriz do Grafana faz o ranking) e as quatro sementes vêm do mesmo simulador. A verdade do simulador só
+é usada nessa calibração offline; em produção o equivalente seria o histórico de incidentes.
+
 ## Orquestração (Airflow)
 
 O Airflow 3 roda no servidor Linux (`docker compose`, perfil `airflow`; interface em `http://localhost:8080` por túnel

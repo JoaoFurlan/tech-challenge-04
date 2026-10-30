@@ -181,7 +181,7 @@ the Reference (which stays "drifted" forever after week 5):
 | No | No | Yes | Concept drift |
 | Contract fails | — | — | Technical / schema issue |
 
-- Starting thresholds for the automated rule (tune later), all week over week: KS rises
+- Starting thresholds for the automated rule (since frozen in `config/monitoring_thresholds.json`, see `docs/decisions.md` #16; the AUC-PR rule is now a 3-week window, not a single-week 0.04 drop), all week over week: KS rises
   ≥ 0.045, the champion's AUC-PR drop versus its own validation baseline grows ≥ 0.04, mean
   score moves ≥ 1 point. Decision order: covariate → concept → label.
 - **Slice analysis**: an automated scan of AUC-PR drop across 14 slices (`EXT_SOURCE_1/2/3`,
@@ -334,7 +334,7 @@ Two deliberately different collection patterns, both demonstrated:
   must be something that would exist in a real production setup. Simulation-only conveniences —
   using ground truth, labels with no delay, panels that only make sense in a mock — are not
   allowed unless the repo owner explicitly approves them as an exception. Where a simulation
-  needs something prod would not have, say so. Approved exceptions so far: v1 kept scoring
+  needs something prod would not have, say so. Approved exceptions so far: offline-only calibration of detector thresholds with ground truth and extra seeds (step 14, `docs/decisions.md` #16); v1 kept scoring
   offline as a comparison baseline after promotion.
 - **Course notes**: `docs/course-notes/*.md` are the curated reference for every technique used
   in this project (drift tests, imputation theory, LGPD bases, MLflow patterns, etc.) — check
@@ -369,4 +369,4 @@ rerun on AWS with the same commit, data, frozen thresholds and champion; never t
 The stack (Postgres, MLflow, model server, later Airflow/Prometheus/Grafana) runs on the Linux box
 `pricing-server`, reached by SSH tunnel; the laptop is the workstation (see `docs/operations.md`; the repo was verified on
 a clean checkout there: 76 tests pass). Airflow runs on the box (`training_pipeline` DAG verified end to end). The `production_monitoring` DAG ran all 13 weeks green (alerts, diagnosis and metrics in `docs/decisions.md` #14);
-Prometheus, the Pushgateway and Grafana with the provisioned dashboard are up (step 13, `docs/decisions.md` #15). Next: calibrate and freeze the detector thresholds (step 14).
+Prometheus, the Pushgateway and Grafana with the provisioned dashboard are up (step 13, `docs/decisions.md` #15). Detector thresholds are calibrated on seeds 101/202, validated on 303/404 and frozen (step 14, #16: 3-week AUC-PR window rule, one feature at PSI 0.10 for a data alert). Next: the full local run with frozen thresholds (step 15).

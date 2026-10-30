@@ -12,6 +12,8 @@ approved by the repo owner.
 | 5 | Slices to monitor | Approved |
 | 6 | Drift accumulation | Approved |
 
+Later sections (7 onward) record the build decisions; #16 holds the frozen detector thresholds.
+
 ## 1. Validation rules
 
 Two contracts, because labels arrive late in production.
@@ -439,3 +441,41 @@ script, rerun it, commit both).
   admin password defaults to `admin` for local use; set `GRAFANA_ADMIN_PASSWORD` before exposing it anywhere (AWS: the
   security group stays restricted to the operator's IP).
 - Verified: every panel's query returns data through the Grafana API, and the rendered dashboard was checked visually.
+
+## 16. Calibrating and freezing the detector thresholds (step 14)
+
+Code: `monitoring/calibration.py` (simulates a seed in memory, scores it with the champion, keeps only summary numbers
+in `docs/calibration/seed_<seed>.json`), `monitoring/replay.py` (reruns the alert rules and the diagnosis over those
+signals and scores them against the injection), notebook `04_drift_evaluation` (HTML in `docs/reports/`), thresholds
+in `config/monitoring_thresholds.json` (status `frozen`).
+
+**Exception to real-world-first, approved by the repo owner.** Ground truth (the injection schedule) and extra
+simulated worlds exist only here, offline, to calibrate thresholds. In production the equivalent is incident history,
+backtests and alert review. Nothing on the dashboard or in the DAG uses ground truth, and the official seed (42) is
+never used for calibration.
+
+**Protocol.** Seeds 101 and 202 to tune, 303 and 404 to validate, looked at once after freezing. Disclosure: the first
+tuning pass used 101 only; validating on 202 exposed a failure (a control week and most concept weeks wrong), so 202
+became a tuning seed and 303/404 were generated as the clean validation.
+
+| Threshold | Before | Frozen | Why |
+|---|---|---|---|
+| Features at PSI >= 0.10 needed for a data alert | 2 | **1** | control weeks peak at 0.01-0.015 on four seeds; weeks 3-4 move one variable at a time and were alerted late |
+| Performance drop | one week's AUC-PR >= 0.04 below the baseline | **mean of the last 3 labelled weeks + 1.645 standard errors still below the baseline** | a week has ~400 defaulters (AUC-PR +-0.04), the injected drop is 0.03-0.05; the single-week rule false-alarmed on a control week and missed most concept weeks on seed 202 |
+| PSI bands, score, slices, diagnosis | provisional | unchanged | a sweep on seed 101 found no gain without false alarms |
+
+**Validation (seeds 303 and 404, thresholds frozen):** no false alarm in the control weeks, none in the performance or
+data rules; first data alert in week 3-4; concept-drift weeks caught 5/5 and 4/5; diagnosis 13/13 and 12/13. The
+provisional thresholds scored 3/5 and 4/5 on the same weeks.
+
+**What still fails, and is accepted.**
+- Week 8 can go unflagged: the 3-week window still holds healthy weeks, so the first concept week is caught one or
+  two weeks late. That is the price of not alarming on noise.
+- The slice flag is weak: with the bootstrap interval required it almost never fires on healthy weeks (one false in four
+  simulations) but catches only about 2 of 5 concept weeks; without it, it false-alarms on several healthy weeks (14
+  slices, ~47 defaulters in some). It stays conservative; the dashboard's slice matrix ranks the drop instead.
+- The PSI alert still repeats from the first drifted week until a retrain re-points the baseline.
+- All four seeds share one simulator (same drift types, same segment). The thresholds are validated on new draws, not on
+  drift of an unknown kind.
+
+Changing a frozen threshold now needs a new decision here, not a quiet edit.
