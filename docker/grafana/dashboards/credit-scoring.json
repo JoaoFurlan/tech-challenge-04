@@ -1375,7 +1375,7 @@
        "mode": "basic"
       },
       "align": "center",
-      "width": 50
+      "width": 40
      },
      "thresholds": {
       "mode": "absolute",
@@ -1407,7 +1407,7 @@
       "properties": [
        {
         "id": "custom.width",
-        "value": 215
+        "value": 185
        }
       ]
      }

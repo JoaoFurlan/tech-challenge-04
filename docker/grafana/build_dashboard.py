@@ -128,11 +128,11 @@ def feature_matrix(x: int, y: int, w: int, h: int) -> dict:
             {"id": "sortBy", "options": {"fields": {}, "sort": [{"field": "08", "desc": True}]}},
         ],
         "fieldConfig": {"defaults": {"decimals": 2, "custom": {"cellOptions": {"type": "color-background", "mode": "basic"},
-                                                             "align": "center", "width": 50},
+                                                             "align": "center", "width": 40},
                                      "thresholds": steps((GREEN, None), (ORANGE, 0.10), (RED, 0.25)),
                                      "color": {"mode": "thresholds"}},
                         "overrides": [{"matcher": {"id": "byName", "options": "feature\\week"},
-                                       "properties": [{"id": "custom.width", "value": 215}]}]},
+                                       "properties": [{"id": "custom.width", "value": 185}]}]},
         "options": {"showHeader": True, "cellHeight": "sm"},
     }
 
