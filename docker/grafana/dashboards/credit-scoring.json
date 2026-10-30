@@ -1328,7 +1328,7 @@
     "x": 0,
     "y": 25,
     "w": 18,
-    "h": 13
+    "h": 8
    },
    "targets": [
     {
@@ -1426,11 +1426,11 @@
     "x": 18,
     "y": 25,
     "w": 6,
-    "h": 13
+    "h": 8
    },
    "options": {
     "mode": "markdown",
-    "content": "Rows are the monitored features, sorted by how much they moved; columns are weeks. **Green** is under 0.10 (stable), **orange** 0.10 to 0.25, **red** above 0.25. Scroll inside the table to see all 32 features. A week with no column was blocked by the contract (week 9). Only four features cross 0.10: the annuity ratios, income and the annuity; the rest stay green."
+    "content": "Rows are the monitored features, sorted by how much they moved; columns are weeks. **Green** is under 0.10 (stable), **orange** 0.10 to 0.25, **red** above 0.25. Six rows show at a time; scroll inside the table to see all 32 features. A week with no column was blocked by the contract (week 9). Only four features cross 0.10: the annuity ratios, income and the annuity; the rest stay green."
    },
    "id": 17
   },
@@ -1442,7 +1442,7 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 38
+    "y": 33
    },
    "panels": [],
    "id": 18
@@ -1457,7 +1457,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 39,
+    "y": 34,
     "w": 8,
     "h": 8
    },
@@ -1620,7 +1620,7 @@
    },
    "gridPos": {
     "x": 8,
-    "y": 39,
+    "y": 34,
     "w": 8,
     "h": 8
    },
@@ -1783,7 +1783,7 @@
    },
    "gridPos": {
     "x": 16,
-    "y": 39,
+    "y": 34,
     "w": 8,
     "h": 8
    },
@@ -1966,7 +1966,7 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 47
+    "y": 42
    },
    "panels": [
     {
@@ -1979,7 +1979,7 @@
      },
      "gridPos": {
       "x": 0,
-      "y": 48,
+      "y": 43,
       "w": 24,
       "h": 16
      },
@@ -2074,7 +2074,7 @@
      },
      "gridPos": {
       "x": 0,
-      "y": 64,
+      "y": 59,
       "w": 8,
       "h": 14
      },
@@ -2189,7 +2189,7 @@
      },
      "gridPos": {
       "x": 8,
-      "y": 64,
+      "y": 59,
       "w": 16,
       "h": 14
      },
