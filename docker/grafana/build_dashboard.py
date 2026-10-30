@@ -113,6 +113,30 @@ def slice_matrix(x: int, y: int, w: int, h: int) -> dict:
     }
 
 
+def feature_matrix(x: int, y: int, w: int, h: int) -> dict:
+    """PSI of every monitored feature, features down and weeks across: which feature moved, and when."""
+    expr = padded("sum by (week, feature) (drift_feature_psi)")
+    return {
+        "type": "table", "title": "PSI by feature and week (32 monitored features, sorted by week 8)",
+        "description": ("Each cell is one feature's PSI against the champion's training window for that week. Green is under "
+                        "0.10 (stable), orange 0.10 to 0.25 (moderate), red above 0.25 (major). A week with no cell was blocked "
+                        "by the contract. Some injected shifts, like employment, stay under 0.10."),
+        "datasource": DS, "gridPos": {"x": x, "y": y, "w": w, "h": h}, "targets": [table_target(expr, "A")],
+        "transformations": [
+            {"id": "groupingToMatrix", "options": {"columnField": "week", "rowField": "feature", "valueField": "Value",
+                                                    "emptyValue": "null"}},
+            {"id": "sortBy", "options": {"fields": {}, "sort": [{"field": "08", "desc": True}]}},
+        ],
+        "fieldConfig": {"defaults": {"decimals": 2, "custom": {"cellOptions": {"type": "color-background", "mode": "basic"},
+                                                             "align": "center", "width": 72},
+                                     "thresholds": steps((GREEN, None), (ORANGE, 0.10), (RED, 0.25)),
+                                     "color": {"mode": "thresholds"}},
+                        "overrides": [{"matcher": {"id": "byName", "options": "feature\\week"},
+                                       "properties": [{"id": "custom.width", "value": 260}]}]},
+        "options": {"showHeader": True, "cellHeight": "sm"},
+    }
+
+
 def colored_table(title: str, expr: str, columns: list[str], x: int, y: int, w: int, h: int, color_field: str,
                   mapping: dict[str, str], desc: str = "") -> dict:
     mappings = [{"type": "value",
@@ -206,6 +230,12 @@ def build() -> dict:
         timeseries("Server latency, 95th percentile", "histogram_quantile(0.95, sum by (le) (rate(predict_latency_seconds_bucket[5m])))",
                    "p95", 16, 58, 8, 7, unit="s"),
     ]
+    shift = 28  # room for the per-feature row, inserted right after the inputs row
+    for p in panels:
+        if p["gridPos"]["y"] >= 16:
+            p["gridPos"]["y"] += shift
+    at = next(i for i, p in enumerate(panels) if p["type"] == "row" and p["title"].startswith("Performance"))
+    panels[at:at] = [row("Which feature moved? (PSI by feature and week)", 16), feature_matrix(0, 17, 24, 27)]
     for i, panel in enumerate(panels, start=1):
         panel["id"] = i
     return {
