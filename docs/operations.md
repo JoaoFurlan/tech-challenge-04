@@ -112,3 +112,22 @@ Restore: start `postgres`, `psql < mlflow_dump.sql`, create the volume and `tar 
 - `RELOAD_TOKEN` defaults to a dev value in `docker-compose.yml`; set a real one in a `.env` file on the box before
   exposing anything beyond the tunnel.
 - The user `pricing` is in the `docker` group, which is effectively root on that machine.
+
+## Retraining and starting a run from scratch
+
+`retraining_pipeline` is created paused: unpause it together with `production_monitoring`, or the loop's `retrain` task
+waits for a run that never starts. The loop triggers it on its own; to run it by hand give `run_week` (the simulated week
+whose labels the retrain may use up to run_week - 1). `build` registers two model versions per run in the registry.
+
+Clean slate before a full rerun (what I did before the reference run), in this order:
+
+```bash
+# pause both DAGs, delete their run history (the DAG files stay; Airflow re-registers them paused)
+airflow dags pause production_monitoring; airflow dags pause retraining_pipeline
+airflow dags delete -y production_monitoring; airflow dags delete -y retraining_pipeline
+rm -rf artifacts/monitoring reports/drift/*                  # on the box
+# wipe the Pushgateway: remove its container and the pushgatewaydata volume, then up -d pushgateway
+# MLflow: delete the runs of `production_monitoring` and `retraining`, delete registered versions above 1
+# and the aliases challenger/previous/baseline, leaving only `champion` on version 1
+```
+Then unpause both DAGs.

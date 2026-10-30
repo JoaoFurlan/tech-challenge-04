@@ -164,6 +164,25 @@ alertas por semana, o resultado do contrato de dados e tráfego/latência do ser
 `week`), e os painéis que dependem de rótulos só mostram a semana N depois da semana N+1, refletindo o atraso real.
 Decisões em `docs/decisions.md` (seção 15).
 
+## Retreino e recalibração
+
+O `retraining_pipeline` roda dentro do laço, com atraso de rótulos de **uma semana**: dispara no primeiro alerta forte de
+drift de dados (semana 5, rótulos até a semana 4) e depois num alerta de queda de desempenho (semana 11, rótulos até a
+semana 10). Cada execução constrói dois candidatos: **A**, o campeão recalibrado, e **B**, a mesma receita reajustada na
+Referência mais as semanas rotuladas (peso maior para as recentes) e recalibrada. O melhor vira `challenger` e só substitui
+o campeão se passar num **portão por bootstrap pareado** numa fatia separada: o ganho de custo (C_FN = 5 × C_FP) precisa
+ter o intervalo de 95% inteiro acima de zero, sem piora significativa de AUC-PR. Se passar, o alias `champion` muda e o
+servidor recarrega; o primeiro campeão continua pontuando offline como linha de comparação.
+
+Resultado na execução de referência: **os dois portões rejeitaram os dois candidatos**, então o campeão original serviu
+as 13 semanas. Depois do drift de covariáveis, recalibrar foi neutro e reajustar com 4 semanas foi pior (AUC-PR −0,006).
+Depois do drift de conceito, o candidato retreinado ficou igual ao campeão (dentro do segmento, 0,178 → 0,184, dentro do
+ruído); com só duas semanas rotuladas do regime novo não há evidência para trocar. A lição é a esperada: retreinar nem
+sempre é a resposta, a recalibração é a correção barata, e recuperar o desempenho depende de mais rótulos. Análises em
+`notebooks/02_retrain_v2.ipynb` e `03_retrain_v3.ipynb` (HTML em `docs/reports/`); decisões na seção 18 de
+`docs/decisions.md`. Limitação: o caminho de promoção (mudança de alias, recarga, nova janela de referência de drift)
+não foi exercitado no laço real, só em testes unitários.
+
 ## Calibração dos limiares
 
 Os limiares dos alertas foram calibrados **offline** em simulações com sementes diferentes da oficial: 101 e 202 para

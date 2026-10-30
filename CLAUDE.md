@@ -147,7 +147,7 @@ the rubric; it supports the "lessons learned" part of the video.
   scaling or isotonic regression on recent labels, and a cost-optimal threshold
   (`t* = C_FP(1−π) / [C_FP(1−π) + C_FN·π]`). Recalibration changes Brier/threshold, never AUC-PR.
 - **Challenger flow**: the best candidate is registered as `challenger` (v2); `champion` does not
-  move until a gate passes (beats v1 by an agreed margin on the held-out slice). Promotion =
+  move until a gate passes (paired-bootstrap gate on a held-out slice, no fixed margin, see `docs/decisions.md` #18). Promotion =
   moving the `champion` alias, then calling the model server's `/reload`. No DAG changes.
 - **Measuring the effect**: v1 and v2 are scored on the **same** batches every later week, so the
   v2 − v1 gap isolates the effect of the intervention regardless of drift type. Put a
@@ -344,8 +344,7 @@ Two deliberately different collection patterns, both demonstrated:
 
 ## Open items (confirm before/while building)
 
-- [ ] Promotion gate margin, the exact label delay (one week assumed), and thresholds for the
-      automated diagnosis rules (stretch phase).
+- [x] Promotion gate, label delay and diagnosis thresholds: paired-bootstrap gate, one week, frozen thresholds (#16, #18).
 - [ ] Whether the cloud model server reads the EC2 MLflow registry (how it works today, locally) or a champion
       exported to S3 (would drop `mlflow-skinny`, about 75 MB of the image).
 - [ ] Notebook tooling: clean diffs (nbstripout/jupytext) vs committing executed notebooks, and
@@ -369,4 +368,4 @@ rerun on AWS with the same commit, data, frozen thresholds and champion; never t
 The stack (Postgres, MLflow, model server, later Airflow/Prometheus/Grafana) runs on the Linux box
 `pricing-server`, reached by SSH tunnel; the laptop is the workstation (see `docs/operations.md`; the repo was verified on
 a clean checkout there: 76 tests pass). Airflow runs on the box (`training_pipeline` DAG verified end to end). The `production_monitoring` DAG ran all 13 weeks green (alerts, diagnosis and metrics in `docs/decisions.md` #14);
-Prometheus, the Pushgateway and Grafana with the provisioned dashboard are up (step 13, `docs/decisions.md` #15). Detector thresholds are calibrated on seeds 101/202, validated on 303/404 and frozen (step 14, #16: 3-week AUC-PR window rule, one feature at PSI 0.10 for a data alert). The full 13-week run with the frozen thresholds is the reference run (step 15, #17). Next: the repo owner checks the dashboard, then retraining (step 16).
+Prometheus, the Pushgateway and Grafana with the provisioned dashboard are up (step 13, `docs/decisions.md` #15). Detector thresholds are calibrated on seeds 101/202, validated on 303/404 and frozen (step 14, #16: 3-week AUC-PR window rule, one feature at PSI 0.10 for a data alert). The full 13-week run with the frozen thresholds is the reference run (step 15, #17). Retraining (step 16, #18) is built and ran inside the loop at weeks 5 and 11: both gates rejected both candidates, so v1 served all 13 weeks. Next: causal analysis and the Portuguese README/LGPD documentation (step 17).

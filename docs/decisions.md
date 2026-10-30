@@ -501,3 +501,59 @@ Findings: the frozen rule fixed the old week-12 miss, and the only concept week 
 week's AUC-PR still swings a lot (week 1 scored 0.303, week 2 0.226, both control weeks), which is why the rule averages
 three. The PSI alert keeps firing through week 13 until a retrain re-points the baseline (step 16). This run is the
 reference for the video and for the comparison with the AWS rerun.
+
+## 18. Retraining, the promotion gate and what the loop did (step 16)
+
+Code in `src/credit_drift/retraining/`: `window.py` (the data a retrain may use), `candidates.py`, `gate.py`, `policy.py`
+(the trigger), `run.py` (`build` and `promote` steps), `analysis.py` (notebook helpers). DAG `retraining_pipeline`
+(`decide -> build_candidates -> promote`); `production_monitoring` ends with `check_retraining`, which triggers it and
+waits, so the next simulated week scores with whatever model is champion by then. Notebooks `02_retrain_v2` and
+`03_retrain_v3` (HTML in `docs/reports/`) only read what the pipeline logged. Approved by the repo owner: label delay of
+one week, and a paired-bootstrap gate instead of a fixed margin.
+
+**Data window.** Reference train part plus the production weeks whose labels have arrived (a run after week N's batch uses
+weeks up to N-1; the blocked week 9 has none). The last two labelled weeks are the "recent" slice, split at random into
+30% that joins the training rows, 30% that fits the calibrator and 40% held out for the gate (about 4,000 rows and 320
+defaulters), so no row serves two purposes. Production rows carry as much total weight as the Reference rows, spread by
+recency (half-life two weeks). These shares were fixed before seeing results.
+
+**Candidates.** A: the champion's own pipeline, recalibrated on the calibration slice. B: the champion's recipe (same
+steps and settings, cloned) refitted on the window with the weights, then recalibrated. Isotonic or Platt is chosen by
+cross-fitted Brier. A or B goes forward by cross-fitted expected cost on the calibration slice, never the gate slice. Both
+are registered with tags (candidate, calibration, labels_through_week, window_weeks, gate result); the chosen one gets the
+`challenger` alias.
+
+**Gate.** Paired bootstrap on the gate slice (1,000 draws). Promote only if (1) the expected-cost gain (C_FN = 5 x C_FP,
+at each model's own threshold) has its 95% interval entirely above zero, (2) the AUC-PR difference is not significantly
+negative, and (3) Brier beats the constant-prior predictor. A fixed margin would be arbitrary: one week of AUC-PR moves
+by +-0.04 and recalibration never moves it.
+
+**Promotion.** Moves `champion`, keeps the first champion as `baseline` (the approved comparison exception) and the one
+before as `previous`, drops `challenger`, and POSTs `/reload` to the server. A promoted model's drift baseline re-points:
+its window is equal parts Reference and the production weeks it trained on (tag `window_weeks`; candidate A keeps its base
+model's window because only the calibrator changed). The performance baseline is per model version, as before.
+
+**Trigger.** Retrain on the first major data-drift alert; afterwards on a performance-drop alert about a week the champion
+has not seen. After any attempt, wait for three new labelled weeks before trying again (my first version retried every
+week on nearly the same labels and was fixed before the reference run).
+
+**What the reference run did (seed 42, frozen thresholds).**
+
+| Run | Labels through | Trigger | Candidates (versions) | Gate on the chosen one | Outcome |
+|---|---|---|---|---|---|
+| week 5 | 4 | `data_drift_major` | A = v8, B = v9 (chosen) | cost gain -0.021, 95% interval [-0.038, -0.006]; AUC-PR -0.014 | failed, v9 stays `challenger` |
+| week 11 | 10 | `performance_drop` | A = v10, B = v11 (chosen) | cost gain +0.004, [-0.012, +0.019]; AUC-PR +0.004 | failed, v11 stays `challenger` |
+
+v1 served all 13 weeks, so the promotion path (aliases, reload, baseline re-point) did not run in the real loop; it is
+covered by unit tests with a stubbed registry and server.
+
+**Findings.**
+- Retrain 1 (covariate shift): recalibration is neutral; refitting on four weeks is worse than v1 over weeks 6-13
+  (AUC-PR -0.006, 95% interval -0.011 to -0.002; cost +0.007). The gate was right. Retraining is not always the answer.
+- Retrain 2 (concept drift): the retrained candidate is statistically the same as v1 on weeks 11-13 (AUC-PR +0.0015,
+  interval includes zero); inside the injected segment AUC-PR goes from 0.178 to 0.184, the expected direction but within
+  noise. Recalibration does not move AUC-PR, as predicted. With two labelled drifted weeks, 70% of them held out for
+  calibration and the gate, there is not enough evidence to switch. Recovering needs more labelled weeks of the new regime.
+- This differs from the plan's hope that v3 would recover the loss. Letting the gate decide, rather than tuning the shares
+  until a candidate passed, is the point; a design with a larger fit share would be a new decision, not a tweak.
+- The static reference lines on the dashboard stay valid because the champion never changed.
