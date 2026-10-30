@@ -136,11 +136,11 @@ Ordered implementation plan for the Tech Challenge 4 project. Design decisions l
 - [x] **Claude:** in `04_drift_evaluation`, tune thresholds on one simulation, validate on a
       second seed, then freeze them in a versioned config. (Done with four seeds: 101 and 202 to tune,
       303 and 404 to validate; decision #16.)
-- [ ] **You:** review and approve the frozen thresholds.
+- [x] **You:** review and approve the frozen thresholds. (Approved: the 3-week window rule and its delay, the one-feature data alert, the documented weaknesses.)
 - **Why:** evidence-based thresholds without tuning on the official run.
 
 ### 15. Full local run without retraining [R]
-- [ ] **Claude:** run all 13 weeks end to end; check the dashboard, the contract block in
+- [x] **Claude:** run all 13 weeks end to end; check the dashboard, the contract block in
       week 9, and detectors vs `drift_spec.json`. Save this run as the reference.
 - [ ] **You:** look at the dashboard and confirm the story reads clearly.
 - **Why:** proves the required deliverable works before spending time on extras, in the

@@ -138,17 +138,17 @@ execução da semana N fecha a semana N-1: AUC-PR, Brier, taxa prevista contra o
 semanas). Em seguida vêm as **regras de alerta**, o **diagnóstico** do tipo de drift (comparando com a semana
 anterior, não com a Referência), o registro no MLflow e o envio das métricas ao Pushgateway/Prometheus.
 
-| Semanas | O que o laço disse |
+| Semanas | O que o laço disse (limiares congelados, decisão #17) |
 |---|---|
 | 1–2 | nenhum alerta (controle) |
-| 3 | sem alerta (PSI 0,09), mas já diagnosticado como mudança de covariáveis |
+| 3 | sem alerta (PSI logo abaixo de 0,10), mas já diagnosticado como mudança de covariáveis |
 | 4 | primeiro alerta (`data_drift_moderate`) |
-| 5 | `data_drift_major` (parcela/crédito, PSI 0,80) |
+| 5 | `data_drift_major` (parcela/crédito) |
 | 6–7 | o alerta de PSI continua (a base ainda é a do treino), mas o diagnóstico é "nada": o novo normal parou de mudar |
-| 8 | quando os rótulos chegam, queda de desempenho e diagnóstico **drift de conceito** |
+| 8 | diagnóstico "nada": a média móvel de 3 semanas ainda não caiu abaixo da base (atraso aceito, decisão #16) |
 | 9 | lote bloqueado pelo contrato: não pontuado, em quarentena, alerta crítico e diagnóstico "técnico" |
-| 10–11 | queda de desempenho e drift de conceito novamente |
-| 12 | queda de 0,034: **não** alertou (o limiar é 0,04 e uma única semana oscila cerca de ±0,04) |
+| 10–12 | drift de conceito diagnosticado e `performance_drop` nas semanas 10, 11 e 12 |
+| 13 | só o alerta de PSI: os rótulos chegariam em uma semana 14 que não roda |
 
 Limitações assumidas e registradas em `docs/decisions.md` (seção 14): o alerta de PSI se repete até o modelo ser
 retreinado e a base ser trocada; o ranking de fatias aponta renda baixa e idade baixa (as variáveis que definem o

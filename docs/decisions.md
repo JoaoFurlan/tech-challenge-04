@@ -479,3 +479,25 @@ provisional thresholds scored 3/5 and 4/5 on the same weeks.
   drift of an unknown kind.
 
 Changing a frozen threshold now needs a new decision here, not a quiet edit.
+
+## 17. The reference run with frozen thresholds (step 15)
+
+`production_monitoring` ran 13/13 green on the box from a clean slate (artifacts, MLflow runs and Pushgateway wiped),
+official seed 42, thresholds frozen in decision #16, no retraining. Every Grafana panel returns data.
+
+| Week | Injected | What the loop said |
+|---|---|---|
+| 1-2 | control | no alerts, diagnosis none |
+| 3 | mild covariate shift | no alert (PSI just under 0.10), diagnosis covariate shift |
+| 4 | covariate shift, mix starts to move | `data_drift_moderate`, covariate shift |
+| 5 | annuity shock | `data_drift_major`, covariate shift |
+| 6-7 | new normal | PSI alert repeats (baseline not re-pointed yet), diagnosis none |
+| 8 | concept drift starts | diagnosis **none**: the 3-week AUC-PR window (0.232) had not fallen below the baseline yet (the accepted delay, #16) |
+| 9 | corrupted batch | `batch_blocked` (critical), batch quarantined, diagnosis technical |
+| 10-12 | concept drift persists | diagnosis concept drift; `performance_drop` raised for weeks 10, 11 and 12 |
+| 13 | concept drift persists | PSI alert only: its labels would arrive in a week 14 that does not run |
+
+Findings: the frozen rule fixed the old week-12 miss, and the only concept week not caught is week 8, as agreed. A single
+week's AUC-PR still swings a lot (week 1 scored 0.303, week 2 0.226, both control weeks), which is why the rule averages
+three. The PSI alert keeps firing through week 13 until a retrain re-points the baseline (step 16). This run is the
+reference for the video and for the comparison with the AWS rerun.
