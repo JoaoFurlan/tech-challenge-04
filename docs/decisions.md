@@ -604,3 +604,13 @@ across, sorted by the week-8 column; green under 0.10, orange to 0.25, red above
 approach of the slice panel and the `drift_feature_psi` series already in Prometheus, so no rerun was needed. It shows which
 feature moved and when; employment and income-type shifts stay green because they are injected below 0.10. The model `SCORE` also
 appears as a row. A line-per-feature chart was drafted and rejected: with only four features above 0.10, 32 lines are unreadable.
+
+**Addendum to #15 (heat map size).** The heat map panel is 8 grid units tall: six rows are visible at once and the table scrolls
+inside for the other 26. A short text panel beside it explains how to read it. Week columns are 40 px wide so all 16 weeks fit.
+
+**Addendum to #19 (bias check beyond gender).** The audit now also covers four age bands (18-29, 30-44, 45-59, 60+) and four
+metrics per group: calibration (predicted vs observed), flag rate, false-positive rate and recall. Calibration holds in every
+group (18-29: 12.0% predicted, 11.9% observed), but error rates differ: the youngest band is flagged about 9 times more often
+than the oldest, with a false-positive rate of 19.9% against 2.1%. Age is a model input and gender is not. When groups have
+different base default rates not all fairness metrics can be equalized at once, so a choice has to be made and justified; that
+choice and the legal basis for using age are left for the legal review.
