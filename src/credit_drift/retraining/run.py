@@ -22,8 +22,8 @@ from mlflow.exceptions import MlflowException
 import credit_drift
 from credit_drift.data import TARGET
 from credit_drift.monitoring.weekly import ROOT, write_json
-from credit_drift.retraining.candidates import build_candidates, features_of, pick
-from credit_drift.retraining.gate import paired_gate
+from credit_drift.retraining.candidates import build_candidates, features_of
+from credit_drift.retraining.gate import choose_candidate, paired_gate
 from credit_drift.retraining.policy import load_state, save_state
 from credit_drift.retraining.window import build_window
 from credit_drift.serving.registry import champion_window_weeks, load_champion
@@ -56,12 +56,12 @@ def step_build(run_week: int, through_week: int, trigger: str) -> int:
     window = build_window(through_week, pd.read_parquet(REFERENCE_DIR / "train.parquet"))
     threshold = champion.threshold
     candidates = build_candidates(champion.model, window, threshold)
-    chosen = pick(candidates)
 
     X_gate, y_gate = features_of(window.gate), window.gate[TARGET].to_numpy()
     p_champion = champion.model.predict_proba(X_gate)[:, 1]
-    gates = {k: paired_gate(y_gate, p_champion, c["model"].predict_proba(X_gate)[:, 1], threshold, threshold)
-             for k, c in candidates.items()}  # both are reported; only the chosen one is acted on
+    gates = {k: paired_gate(y_gate, p_champion, c["model"].predict_proba(X_gate)[:, 1], threshold, threshold,
+                            alpha=0.05 / len(candidates)) for k, c in candidates.items()}
+    chosen = choose_candidate(gates)
     base_weeks, trained_weeks = champion_window_weeks(champion.version), sorted(set(window.weeks))
     activate_experiment(EXPERIMENT)
     versions = {}

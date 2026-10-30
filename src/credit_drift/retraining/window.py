@@ -1,7 +1,7 @@
 """The data a retrain may use: the Reference train part plus the production weeks whose labels have arrived.
 
 Respecting the label delay is the point: a retrain run after week N's batch can only use weeks up to N-1 (labels arrive
-a week late), and a week that never got labels (the blocked week 9) is simply absent. The last two labelled weeks are
+a week late), and a week that never got labels (the blocked week 9) is simply absent. The last four labelled weeks are
 the "recent" slice: split at random into a part that joins the training rows, a part that fits the calibrator, and a
 part that is held out for the promotion gate, so no row serves two purposes (docs/decisions.md, #18).
 """
@@ -14,7 +14,7 @@ from sklearn.model_selection import train_test_split
 from credit_drift.data import ID_COL, TARGET
 from credit_drift.split import PRODUCTION_DIR
 
-RECENT_WEEKS = 2
+RECENT_WEEKS = 4  # was 2 in the first reference run; see docs/decisions.md, #18 (post-hoc, for gate power)
 FIT_SHARE, CALIBRATION_SHARE, GATE_SHARE = 0.30, 0.30, 0.40  # of the recent slice
 HALF_LIFE_WEEKS = 2.0  # a labelled week counts half as much for every two weeks of age
 PRODUCTION_WEIGHT_SHARE = 0.5  # production rows carry as much total weight as the Reference rows
@@ -60,7 +60,7 @@ def sample_weights(weeks: pd.Series, reference_rows: int, latest_week: int) -> n
 
 def build_window(through_week: int, reference_train: pd.DataFrame, seed: int = 42) -> Window:
     weeks = labelled_weeks(through_week)
-    if len(weeks) < RECENT_WEEKS + 1:
+    if len(weeks) < 3:
         raise SystemExit(f"only weeks {weeks} have labels through week {through_week}: too few to retrain")
     recent_weeks, earlier_weeks = weeks[-RECENT_WEEKS:], weeks[:-RECENT_WEEKS]
     recent = pd.concat([load_week(w) for w in recent_weeks], ignore_index=True)

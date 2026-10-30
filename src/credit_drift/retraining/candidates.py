@@ -4,8 +4,7 @@ A: the current champion's own pipeline, recalibrated on the recent calibration s
 B: the champion's recipe (same preprocessing, same estimator and settings) refitted on the training window with
    recency weights, then recalibrated on the same slice.
 
-Which one goes forward is decided WITHOUT the gate slice, on cross-fitted predictions over the calibration slice, so
-the gate stays an unbiased test of the one candidate that reaches it.
+Both go through the gate (with a multiplicity correction); nothing is preselected on the small calibration slice.
 """
 import numpy as np
 from sklearn.base import clone
@@ -60,8 +59,3 @@ def build_candidates(champion: CalibratedModel, window: Window, threshold: float
     out["B"] = dict(zip(("model", "calibration"),
                         calibrate(retrain_pipeline(champion, window), X_cal, y_cal, threshold), strict=True))
     return out
-
-
-def pick(candidates: dict[str, dict]) -> str:
-    """Lowest cross-fitted expected cost on the calibration slice; a tie goes to A, the simpler change."""
-    return min(candidates, key=lambda k: (round(candidates[k]["calibration"]["crossfit_cost"], 6), k))

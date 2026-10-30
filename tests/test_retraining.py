@@ -5,7 +5,7 @@ import pytest
 
 from credit_drift.data import ID_COL, TARGET
 from credit_drift.retraining import policy, run, window
-from credit_drift.retraining.gate import paired_gate
+from credit_drift.retraining.gate import choose_candidate, paired_gate
 
 
 # ---------------------------------------------------------------- window
@@ -36,12 +36,12 @@ def test_a_week_without_labels_is_never_used_and_labels_arrive_one_week_late(pro
 def test_the_recent_slice_is_split_into_disjoint_fit_calibration_and_gate_parts(production):
     reference = pd.DataFrame({ID_COL: np.arange(2_000), "x": 0.0, TARGET: 0})
     w = window.build_window(10, reference)
-    assert w.recent_weeks == [8, 10] and w.weeks[-1] == 10
+    assert w.recent_weeks == [6, 7, 8, 10] and w.weeks[-1] == 10
     ids = [set(part[ID_COL]) for part in (w.calibration, w.gate)]
     recent_in_fit = set(w.fit.loc[w.fit["week"].isin(w.recent_weeks), ID_COL])
     assert not (ids[0] & ids[1]) and not (ids[0] & recent_in_fit) and not (ids[1] & recent_in_fit)
-    assert len(w.calibration) + len(w.gate) + len(recent_in_fit) == 800
-    assert len(w.gate) == pytest.approx(0.4 * 800, abs=2)
+    assert len(w.calibration) + len(w.gate) + len(recent_in_fit) == 1600
+    assert len(w.gate) == pytest.approx(0.4 * 1600, abs=2)
 
 
 def test_production_rows_carry_half_the_weight_and_recent_weeks_count_more(production):
@@ -164,3 +164,17 @@ def test_a_passed_gate_moves_champion_keeps_the_first_as_baseline_and_reloads(pr
     saved = policy.load_state(tmp / "retraining.json")[0]
     assert saved["promoted"] and saved["to_version"] == "3"
     assert policy.champion_labels_through(policy.load_state(tmp / "retraining.json")) == 10
+
+
+def test_the_best_passing_candidate_is_chosen_and_otherwise_the_best_looking_one():
+    gates = {"A": {"passed": False, "cost_gain": 0.004}, "B": {"passed": True, "cost_gain": 0.002}}
+    assert choose_candidate(gates) == "B"  # passing beats a larger but unconfirmed gain
+    assert choose_candidate({"A": {"passed": False, "cost_gain": 0.001}, "B": {"passed": False, "cost_gain": 0.003}}) == "B"
+    assert choose_candidate({"A": {"passed": True, "cost_gain": 0.003}, "B": {"passed": True, "cost_gain": 0.003}}) == "A"
+
+
+def test_a_wider_confidence_level_widens_the_gate_interval():
+    y, good, r = _scores()
+    weak = np.clip(0.08 + 0.02 * y + r.normal(0, 0.1, len(y)), 0.001, 0.999)
+    narrow, wide = paired_gate(y, weak, good, 1 / 6, 1 / 6), paired_gate(y, weak, good, 1 / 6, 1 / 6, alpha=0.025)
+    assert wide["cost_gain_ci"][0] <= narrow["cost_gain_ci"][0] and wide["confidence"] == pytest.approx(0.975)
