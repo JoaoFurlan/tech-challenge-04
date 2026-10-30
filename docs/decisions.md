@@ -598,3 +598,9 @@ column does not remove. Not mitigated here (needs business and legal decisions);
 periods (proposals, not legal advice), the art. 20 review flow (not implemented), the provenance of the external scores
 `EXT_SOURCE_*`, and the bias finding above. The dataset is public and not Brazilian customer data, so LGPD does not apply to it
 itself; the plan is written as if it did.
+
+**Addendum to #15 (per-feature heat map).** A heat map of PSI by feature and week sits under the inputs row (features down, weeks
+across, sorted by the week-8 column; green under 0.10, orange to 0.25, red above). It reuses the colored-table matrix
+approach of the slice panel and the `drift_feature_psi` series already in Prometheus, so no rerun was needed. It shows which
+feature moved and when; employment and income-type shifts stay green because they are injected below 0.10. The model `SCORE` also
+appears as a row. A line-per-feature chart was drafted and rejected: with only four features above 0.10, 32 lines are unreadable.
