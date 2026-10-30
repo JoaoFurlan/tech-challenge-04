@@ -56,7 +56,7 @@ The box's `.env` also needs the `monitoring` profile: `COMPOSE_PROFILES=airflow,
 (`localhost:9091` on the box) and Prometheus (`localhost:9090`); add `-L 9090:localhost:9090` to the tunnel to open it.
 
 `production_monitoring` is created paused. Unpausing it (UI toggle, or `airflow dags unpause production_monitoring`)
-runs the 13 simulated weeks in order, about 14 minutes. To rerun one week, trigger it with `{"week": 8}`. To start from
+runs the 16 simulated weeks in order, about 25 minutes with the retrains. To rerun one week, trigger it with `{"week": 8}`. To start from
 a clean slate (what I did before the first full run):
 
 ```bash

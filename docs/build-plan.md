@@ -156,7 +156,7 @@ Ordered implementation plan for the Tech Challenge 4 project. Design decisions l
       analyse why and whether it helped.
 - **Why:** shows the lifecycle (alert -> retrain -> compare -> promote) and measures what
   helped. Updates the dashboard's champion, baseline window and comparison lines.
-- Repeat step 15's check with retraining enabled; this becomes the local reference run. (Done: both gates failed, the champion never changed; decision #18.)
+- Repeat step 15's check with retraining enabled; this becomes the local reference run. (Done on a 16-week timeline: all three gates failed, the champion never changed, though the week-14 candidate helps on unseen weeks; decision #18.)
 
 ## Phase 6 - Documentation and cloud
 

@@ -99,7 +99,7 @@ as demais tabelas de histórico, porque o foco do projeto é o monitoramento em 
 
 ## Simulação de drift
 
-Os dados de produção (100 mil linhas separadas do treino) são cortados em **13 semanas** de 5.000
+Os dados de produção (100 mil linhas separadas do treino) são cortados em **16 semanas** de 5.000
 clientes, sem sobreposição, e um estado de "mundo" é aplicado a cada semana
 (`uv run python -m credit_drift.drift.simulate`; decisões em `docs/decisions.md`, seção 10). O tempo é
 sintético: os dados não têm datas.
@@ -110,7 +110,7 @@ sintético: os dados não têm datas.
 | 3–4 | drift gradual de covariáveis: renda ×0,90 → ×0,86 e tempo de emprego ×0,92 → ×0,85; a mistura de tipos de renda começa a mudar |
 | 5 | choque abrupto: parcela ×1,15 (a razão parcela/renda dispara) e mistura completa (pensionistas de 18% para 12%) |
 | 6–7 | novo normal: o regime da semana 5 continua |
-| 8, 10–13 | **drift de conceito**: para clientes até 45 anos com renda abaixo da mediana (≈26%), a relação de `EXT_SOURCE_2` com a inadimplência é invertida e reduzida à metade; nenhuma variável muda |
+| 8, 10–16 | **drift de conceito**: para clientes até 45 anos com renda abaixo da mediana (≈26%), a relação de `EXT_SOURCE_2` com a inadimplência é invertida e reduzida à metade; nenhuma variável muda |
 | 9 | lote corrompido (12% de rendas nulas, idades < 18, IDs duplicados, coluna numérica como texto): o contrato bloqueia o lote e os rótulos nunca chegam |
 
 Cada semana gera um arquivo de *features* e outro de *rótulos* (em produção os rótulos chegam depois),
@@ -130,8 +130,8 @@ O que isso faz com o modelo campeão (resultado medido, não suposto):
 
 ## Monitoramento semanal (Airflow)
 
-O DAG **`production_monitoring`** é o laço de produção: cada execução é uma semana simulada (1 a 13, em ordem), e o
-conjunto roda sozinho em cerca de 14 minutos. Por semana: o lote passa pelo **contrato de dados** (Pandera e Great
+O DAG **`production_monitoring`** é o laço de produção: cada execução é uma semana simulada (1 a 16, em ordem), e o
+conjunto roda sozinho em cerca de 25 minutos, com os retreinos. Por semana: o lote passa pelo **contrato de dados** (Pandera e Great
 Expectations); se for rejeitado, vai para **quarentena** e nem é pontuado; se passar, é **pontuado pelo servidor do
 modelo via HTTP** e gera o relatório de drift. Em paralelo, como os rótulos chegam com **uma semana de atraso**, a
 execução da semana N fecha a semana N-1: AUC-PR, Brier, taxa prevista contra observada e 14 fatias (janela de duas
@@ -147,8 +147,8 @@ anterior, não com a Referência), o registro no MLflow e o envio das métricas 
 | 6–7 | o alerta de PSI continua (a base ainda é a do treino), mas o diagnóstico é "nada": o novo normal parou de mudar |
 | 8 | diagnóstico "nada": a média móvel de 3 semanas ainda não caiu abaixo da base (atraso aceito, decisão #16) |
 | 9 | lote bloqueado pelo contrato: não pontuado, em quarentena, alerta crítico e diagnóstico "técnico" |
-| 10–12 | drift de conceito diagnosticado e `performance_drop` nas semanas 10, 11 e 12 |
-| 13 | só o alerta de PSI: os rótulos chegariam em uma semana 14 que não roda |
+| 10–15 | drift de conceito diagnosticado; `performance_drop` a partir da semana 11 (sobre a semana 10) |
+| 16 | só o alerta de PSI: os rótulos chegariam em uma semana 17 que não roda |
 
 Limitações assumidas e registradas em `docs/decisions.md` (seção 14): o alerta de PSI se repete até o modelo ser
 retreinado e a base ser trocada; o ranking de fatias aponta renda baixa e idade baixa (as variáveis que definem o
@@ -156,7 +156,7 @@ segmento injetado) por volta da semana 11, mas o limiar de sinalização é cons
 
 ## Dashboard (Grafana)
 
-O Grafana (`http://localhost:3000` pelo túnel SSH) reúne a história das 13 semanas em uma tela, provisionado como
+O Grafana (`http://localhost:3000` pelo túnel SSH) reúne a história das 16 semanas em uma tela, provisionado como
 código (`docker/grafana/`): severidade do drift (PSI contra a Referência e contra a janela do campeão, com as faixas
 0,10 e 0,25), variáveis acima dos limites, drift do score, AUC-PR e Brier contra a linha de base do campeão, taxa
 prevista contra observada, uma matriz de fatias (queda de AUC-PR por fatia e semana), a tabela de diagnóstico e de
@@ -167,21 +167,26 @@ Decisões em `docs/decisions.md` (seção 15).
 ## Retreino e recalibração
 
 O `retraining_pipeline` roda dentro do laço, com atraso de rótulos de **uma semana**: dispara no primeiro alerta forte de
-drift de dados (semana 5, rótulos até a semana 4) e depois num alerta de queda de desempenho (semana 11, rótulos até a
-semana 10). Cada execução constrói dois candidatos: **A**, o campeão recalibrado, e **B**, a mesma receita reajustada na
-Referência mais as semanas rotuladas (peso maior para as recentes) e recalibrada. O melhor vira `challenger` e só substitui
-o campeão se passar num **portão por bootstrap pareado** numa fatia separada: o ganho de custo (C_FN = 5 × C_FP) precisa
-ter o intervalo de 95% inteiro acima de zero, sem piora significativa de AUC-PR. Se passar, o alias `champion` muda e o
-servidor recarrega; o primeiro campeão continua pontuando offline como linha de comparação.
+drift de dados (semana 5, rótulos até a semana 4) e depois em alertas de queda de desempenho (semanas 11 e 14, com
+carência de três semanas rotuladas entre tentativas). Cada execução constrói dois candidatos: **A**, o campeão
+recalibrado, e **B**, a mesma receita reajustada na Referência mais as semanas rotuladas (peso maior para as recentes) e
+recalibrada. Os dois passam por um **portão de bootstrap pareado** numa fatia separada de 8 mil linhas (intervalos de
+97,5%, com correção para dois candidatos): o ganho de custo (C_FN = 5 × C_FP) precisa ter o intervalo inteiro acima de
+zero, sem piora significativa de AUC-PR. Se um passar, o alias `champion` muda e o servidor recarrega; o primeiro
+campeão continua pontuando offline como linha de comparação.
 
-Resultado na execução de referência: **os dois portões rejeitaram os dois candidatos**, então o campeão original serviu
-as 13 semanas. Depois do drift de covariáveis, recalibrar foi neutro e reajustar com 4 semanas foi pior (AUC-PR −0,006).
-Depois do drift de conceito, o candidato retreinado ficou igual ao campeão (dentro do segmento, 0,178 → 0,184, dentro do
-ruído); com só duas semanas rotuladas do regime novo não há evidência para trocar. A lição é a esperada: retreinar nem
-sempre é a resposta, a recalibração é a correção barata, e recuperar o desempenho depende de mais rótulos. Análises em
-`notebooks/02_retrain_v2.ipynb` e `03_retrain_v3.ipynb` (HTML em `docs/reports/`); decisões na seção 18 de
-`docs/decisions.md`. Limitação: o caminho de promoção (mudança de alias, recarga, nova janela de referência de drift)
-não foi exercitado no laço real, só em testes unitários.
+Resultado na execução de referência (16 semanas): **o portão rejeitou todos os candidatos nas três tentativas**, então o
+campeão original serviu todas as semanas. Depois do drift de covariáveis, recalibrar foi neutro e reajustar com 4 semanas
+foi pior (AUC-PR −0,010). Depois de cinco semanas rotuladas de drift de conceito, o candidato B **melhora de fato** nas
+semanas 14–16, que nenhum modelo viu: AUC-PR +0,011 (IC 95% +0,002 a +0,020), concentrado no segmento afetado (0,189 →
+0,216), e neutro fora dele. Ainda assim o portão não o aprovou: na fatia dele a estimativa foi −0,005 (IC −0,017 a +0,009),
+compatível com o ruído. Com cerca de 5 mil clientes por semana e 8% de inadimplência, um ganho de um ponto de AUC-PR não
+é certificável por uma validação curta; em produção isso pede um período de sombra mais longo, acumulando rótulos antes
+de promover (não implementado aqui). Análises em `notebooks/02_retrain_v2.ipynb` e `03_retrain_v3.ipynb` (HTML em
+`docs/reports/`); decisões, incluindo o que foi ajustado depois de ver resultados (post hoc), na seção 18 de
+`docs/decisions.md`. Limitação: o caminho de promoção (mudança de alias, recarga, nova janela de referência de drift) não
+foi exercitado no laço real, só em testes unitários; e a ordem de grandeza do ganho (+0,011) é indicativa, não um teste
+limpo.
 
 ## Calibração dos limiares
 
@@ -261,11 +266,11 @@ colunas até na semana de controle e 14 de 32 nas semanas 5 e 8, e por isso serv
 | 1–2 | 0 (máximo 0,012) | controle: os detectores ficam quietos |
 | 3 | 0 (renda 0,086) | drift gradual ainda abaixo do limite |
 | 4 | 2 (renda 0,156; parcela/renda 0,10) | primeiro alerta |
-| 5–8, 10–13 | 3, duas delas fortes (parcela/crédito 0,80–0,94; parcela/renda 0,27–0,34) | o choque abrupto e o novo normal |
+| 5–8, 10–16 | 3, duas delas fortes (parcela/crédito 0,80–0,94; parcela/renda 0,27–0,34) | o choque abrupto e o novo normal |
 | 9 | lote bloqueado pelo contrato | sem pontuação e sem relatório |
 
 Duas lições para o vídeo: (1) a **parcela bruta** sozinha (PSI 0,08) teria escondido o choque; as razões
-financeiras o revelam. (2) As semanas 8 e 10–13 (drift de conceito) são **idênticas** às 5–7 para todos os
+financeiras o revelam. (2) As semanas 8 e 10–16 (drift de conceito) são **idênticas** às 5–7 para todos os
 detectores de distribuição: nenhuma entrada mudou, e só o desempenho, quando os rótulos chegam, mostra a
 queda. Já a mudança na mistura de tipos de renda tem PSI baixo (0,031), mas p-valor de qui-quadrado da ordem
 de 1e-26: PSI e testes de hipótese respondem a perguntas diferentes.

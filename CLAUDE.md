@@ -32,7 +32,7 @@ not just satisfy the minimum.
   engineering. **Confirmed**: Home Credit, `application_train.csv` (first exploration in
   `notebooks/01_eda.ipynb`; decisions that followed are in `docs/decisions.md`).
 - Split: a **Reference pool** (training) and a held-out, disjoint **Production pool**, further
-  cut into ~13 synthetic "weeks" with progressively injected drift (see below). There is no
+  cut into 16 synthetic "weeks" with progressively injected drift (see below). There is no
   real timestamp in the data — "time" here is entirely synthetic, by design (mirrors the
   pattern used in the course's own hands-on exercises).
 
@@ -83,10 +83,10 @@ disjoint Production pool, one episode per synthetic week:
 | 6–7 | new normal (covariate regime persists) | the week-5 regime stays in place; v2 (trained on labels through week 4 under a one-week label delay) has seen the income shift but not the week-5 payment shock, so it only partly covers this regime |
 | 8 | concept drift | invert/dampen a feature↔target relationship for a subset — a challenger has *not* seen this |
 | 9 | technical/schema drift | corrupted batch — contract blocks ingestion inside the production loop too, not just the one-off Etapa 1 demo |
-| 10–13 | concept drift persists | fresh rows each week; unseen by v1/v2, but v3 (trained after week 11 on labels through week 10) has seen it |
+| 10–16 | concept drift persists | fresh rows each week; the timeline was extended from 13 to 16 weeks so a retrain can see five labelled drifted weeks (week 14 retrain, labels through week 13; weeks 1–13 are unchanged) |
 
 **Simulation mechanics.** Time is synthetic: the Production pool is shuffled once with a fixed
-seed and cut into 13 non-overlapping weekly samples of ~5,000 rows, and a transform function
+seed and cut into 16 non-overlapping weekly samples of ~5,000 rows, and a transform function
 changes each week's rows. Each week is saved as `week_NN.parquet` plus a `drift_spec.json`
 listing every transform (the ground truth, used only offline). Column names follow Home Credit
 and may change with the final dataset. Starting values, to tune until the detectors behave
@@ -96,14 +96,14 @@ sensibly:
   employment duration × 0.85.
 - Week 5: `AMT_ANNUITY` × 1.15 on top of income × 0.86, so annuity ÷ income jumps. Weeks 6–7: the
   week-5 transform again on fresh rows.
-- Category mix (implemented): week 4 at half strength, weeks 5–13 at full strength. Each category gets
+- Category mix (implemented): week 4 at half strength, weeks 5–16 at full strength. Each category gets
   its exact target count drawn from unused rows (pensioners 18.2% → 14.8% → 12.0%, Working ≈ 58%), so
   every row keeps its own label (pure covariate shift, exercises χ²/JS tests). The numeric transforms
   change values in place with labels unchanged (measurement/level drift) — state this in the README.
 - Week 8: features as in week 5. For the segment *age ≤ 45 and income ≤ training median* (≈26% of
   rows), labels are redrawn from an independent LightGBM label model with `EXT_SOURCE_2`'s linear
   coefficient reversed and halved (−0.46 → +0.23) and the intercept shifted to keep the segment's
-  default rate (concept drift, not label shift); labels outside the segment stay real. Weeks 10–13:
+  default rate (concept drift, not label shift); labels outside the segment stay real. Weeks 10–16:
   the same on fresh rows. Week 9's labels never arrive.
 - Week 9: a copy of the week-9 sample with ~12% null incomes, ages under 18, ~3% duplicated IDs
   and one numeric column turned into text.
@@ -162,9 +162,10 @@ the rubric; it supports the "lessons learned" part of the video.
 - **Retrain #2 for concept drift**: with a one-week label delay, labels through week 10 only
   become available after week 11 (week 8 labels are the first containing the drift; week 9 is a
   blocked batch with none). Retrain on them → **v3**, recalibrate, and score v1, v2, v2
-  recalibrated and v3 on the same weeks 12–13. Expected: recalibration leaves AUC-PR flat (the
-  ranking itself is wrong), v3 recovers it, mostly in the affected segment. This is the reason
-  the timeline is 13 weeks. Promote v3 only through the same gate.
+  recalibrated and v3 on the same later weeks. Expected: recalibration leaves AUC-PR flat (the
+  ranking itself is wrong), v3 recovers part of it, mostly in the affected segment. Result (#18):
+  that happens, but only about +0.011 AUC-PR, which the gate cannot certify. The timeline is 16
+  weeks for this reason. Promote only through the same gate.
 - **Interim mitigations while labels mature** (document in the README, not necessarily built):
   tighter approval thresholds or manual review for the affected segment, down-weighting or
   dropping the affected feature, falling back to a simpler model, sample-weighting recent data
@@ -267,7 +268,7 @@ Two core DAGs, plus one stretch DAG (`retraining_pipeline`, see above):
 ### Data versioning — DVC
 Scoped narrowly to **data versioning only** — not pipeline orchestration (`dvc.yaml`) and not
 experiment tracking (`dvc exp`), since Airflow and MLflow already own those jobs respectively.
-Tracks: the raw downloaded dataset, the Reference split, and the 13 generated weekly
+Tracks: the raw downloaded dataset, the Reference split, and the 16 generated weekly
 Production batches (so the exact perturbed data behind each simulated week is a fixed, hashed,
 reproducible artifact — not silently regenerated differently on a later run).
 - Remote: local disk during development; S3 (same bucket as MLflow artifacts, different
@@ -279,7 +280,7 @@ Two deliberately different collection patterns, both demonstrated:
   metrics to a **Pushgateway**, which Prometheus scrapes.
 - **Pull**: the Elastic Beanstalk serving app is long-running — Prometheus scrapes its
   `/metrics` endpoint directly.
-- Grafana is the **headline dashboard** for the video: time-series views across all 13 simulated weeks
+- Grafana is the **headline dashboard** for the video: time-series views across all 16 simulated weeks
   of drift severity (PSI vs. the Reference and vs. the champion's window), alerts, AUC-PR,
   Brier, predicted vs. observed default rate, the slice chart, the automated diagnosis table,
   per-task pipeline health, and inference traffic/latency — the "whole story at a glance"
@@ -297,7 +298,7 @@ Two deliberately different collection patterns, both demonstrated:
 | Why did we retrain, and did it help? | Retraining analysis notebooks (HTML export) + MLflow comparison |
 | Do the detectors match what we injected? | Drift evaluation notebook (offline, uses `drift_spec.json`) |
 | Did the DAG run succeed? Which task failed? | Airflow UI |
-| The whole story arc across 13 weeks | **Grafana** |
+| The whole story arc across 16 weeks | **Grafana** |
 | Live inference traffic right now | Grafana (scraping the EB app) |
 
 ### Cloud — AWS (temporary, recording-window only)
@@ -357,7 +358,7 @@ Two deliberately different collection patterns, both demonstrated:
 Planning complete through the architecture decisions above (drift schedule simplified and
 retraining/recalibration moved to a stretch phase after reviewing the assignment's actual
 requirements). A visual overview of the flow and the planned Grafana dashboard exists as a
-draft artifact; the timeline was extended to 13 weeks to fit a second retrain for concept
+draft artifact; the timeline was extended to 16 weeks so a late retrain sees enough labelled concept
 drift; notebooks (EDA, retraining analysis, drift evaluation) were added to the plan. Steps 1–12
 are done (skeleton on Python 3.14 with uv, DVC with an S3 remote, EDA, decisions, the data split,
 contracts, staged MLflow experiments and a registered champion `credit_scoring@champion`:
@@ -368,4 +369,4 @@ rerun on AWS with the same commit, data, frozen thresholds and champion; never t
 The stack (Postgres, MLflow, model server, later Airflow/Prometheus/Grafana) runs on the Linux box
 `pricing-server`, reached by SSH tunnel; the laptop is the workstation (see `docs/operations.md`; the repo was verified on
 a clean checkout there: 76 tests pass). Airflow runs on the box (`training_pipeline` DAG verified end to end). The `production_monitoring` DAG ran all 13 weeks green (alerts, diagnosis and metrics in `docs/decisions.md` #14);
-Prometheus, the Pushgateway and Grafana with the provisioned dashboard are up (step 13, `docs/decisions.md` #15). Detector thresholds are calibrated on seeds 101/202, validated on 303/404 and frozen (step 14, #16: 3-week AUC-PR window rule, one feature at PSI 0.10 for a data alert). The full 13-week run with the frozen thresholds is the reference run (step 15, #17). Retraining (step 16, #18) is built and ran inside the loop at weeks 5 and 11: both gates rejected both candidates, so v1 served all 13 weeks. Next: causal analysis and the Portuguese README/LGPD documentation (step 17).
+Prometheus, the Pushgateway and Grafana with the provisioned dashboard are up (step 13, `docs/decisions.md` #15). Detector thresholds are calibrated on seeds 101/202, validated on 303/404 and frozen (step 14, #16: 3-week AUC-PR window rule, one feature at PSI 0.10 for a data alert). The full 16-week run with the frozen thresholds is the reference run (step 15, #17). Retraining (step 16, #18) is built and ran inside the loop at weeks 5, 11 and 14: the paired-bootstrap gate rejected every candidate, so v1 served all 16 weeks, although the week-14 candidate B measurably helps on unseen weeks (AUC-PR +0.011) and the gate lacked the power to certify it. Next: causal analysis and the Portuguese README/LGPD documentation (step 17).
