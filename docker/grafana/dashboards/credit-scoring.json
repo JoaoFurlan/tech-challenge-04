@@ -28,11 +28,11 @@
     "x": 0,
     "y": 0,
     "w": 24,
-    "h": 3
+    "h": 4
    },
    "options": {
     "mode": "markdown",
-    "content": "**Weeks are simulated** (1 to 16) and are plotted by week number on the x axis, not as time. Inputs and score describe week N the day it runs. **Performance and slices need labels, which arrive a week late**, so they show week N only after week N+1 has run (week 9's labels never arrive: its batch was blocked). Alerts repeat from week 5 because the drift baseline stays the champion's training window until a new model is promoted."
+    "content": "**Three acts, top to bottom:** is the data valid (the contract), did the inputs move, did the model get worse. The last row, collapsed, holds the slices, the diagnosis and the alerts. **Weeks are simulated** (1 to 16) and are plotted by week number on the x axis, not as time. Inputs and score describe week N the day it runs. **Performance and slices need labels, which arrive a week late**, so they show week N only after week N+1 has run (week 9's labels never arrive: its batch was blocked). Alerts repeat from week 5 because the drift baseline stays the champion's training window until a new model is promoted."
    },
    "id": 1
   },
@@ -46,7 +46,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 3,
+    "y": 4,
     "w": 4,
     "h": 4
    },
@@ -106,7 +106,7 @@
    },
    "gridPos": {
     "x": 4,
-    "y": 3,
+    "y": 4,
     "w": 4,
     "h": 4
    },
@@ -170,7 +170,7 @@
    },
    "gridPos": {
     "x": 8,
-    "y": 3,
+    "y": 4,
     "w": 4,
     "h": 4
    },
@@ -238,7 +238,7 @@
    },
    "gridPos": {
     "x": 12,
-    "y": 3,
+    "y": 4,
     "w": 4,
     "h": 4
    },
@@ -302,7 +302,7 @@
    },
    "gridPos": {
     "x": 16,
-    "y": 3,
+    "y": 4,
     "w": 4,
     "h": 4
    },
@@ -366,7 +366,7 @@
    },
    "gridPos": {
     "x": 20,
-    "y": 3,
+    "y": 4,
     "w": 4,
     "h": 4
    },
@@ -418,16 +418,312 @@
   },
   {
    "type": "row",
-   "title": "Inputs and score (describe week N, no labels needed)",
+   "title": "Act 1 \u00b7 Is the data valid? (the contract, and the server's health)",
    "collapsed": false,
    "gridPos": {
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 7
+    "y": 8
    },
    "panels": [],
    "id": 8
+  },
+  {
+   "type": "trend",
+   "title": "Contract outcome by week",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 9,
+    "w": 8,
+    "h": 7
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "label_replace(sum by (week) (batch_blocked), \"week\", \"0$1\", \"week\", `^(\\d)$`)",
+     "instant": true,
+     "range": false,
+     "format": "table"
+    },
+    {
+     "refId": "B",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "label_replace(sum by (week) (batch_contract_warnings), \"week\", \"0$1\", \"week\", `^(\\d)$`)",
+     "instant": true,
+     "range": false,
+     "format": "table"
+    }
+   ],
+   "transformations": [
+    {
+     "id": "joinByField",
+     "options": {
+      "byField": "week",
+      "mode": "outer"
+     }
+    },
+    {
+     "id": "sortBy",
+     "options": {
+      "fields": {},
+      "sort": [
+       {
+        "field": "week"
+       }
+      ]
+     }
+    },
+    {
+     "id": "convertFieldType",
+     "options": {
+      "conversions": [
+       {
+        "targetField": "week",
+        "destinationType": "number"
+       }
+      ]
+     }
+    },
+    {
+     "id": "filterFieldsByName",
+     "options": {
+      "include": {
+       "pattern": "^(week|Value.*)$"
+      }
+     }
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "none",
+     "decimals": 0,
+     "min": 0,
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 0,
+      "showPoints": "always",
+      "pointSize": 7,
+      "spanNulls": true
+     },
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Value #A"
+      },
+      "properties": [
+       {
+        "id": "displayName",
+        "value": "blocked (1 = rejected)"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Value #B"
+      },
+      "properties": [
+       {
+        "id": "displayName",
+        "value": "warnings"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "blocked (1 = rejected)"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "red"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "warnings"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "yellow"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "week"
+      },
+      "properties": [
+       {
+        "id": "min",
+        "value": 1
+       },
+       {
+        "id": "max",
+        "value": 16
+       },
+       {
+        "id": "decimals",
+        "value": 0
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "xField": "week",
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "none"
+    }
+   },
+   "id": 9
+  },
+  {
+   "type": "timeseries",
+   "title": "Server requests per minute",
+   "description": "Scraped straight from the model server (the pull side of the push/pull pair).",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 9,
+    "w": 8,
+    "h": 7
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (outcome) (rate(predict_requests_total[5m])) * 60",
+     "legendFormat": "{{outcome}}",
+     "range": true
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "none",
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 12
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "none"
+    }
+   },
+   "id": 10
+  },
+  {
+   "type": "timeseries",
+   "title": "Server latency, 95th percentile",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 9,
+    "w": 8,
+    "h": 7
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "histogram_quantile(0.95, sum by (le) (rate(predict_latency_seconds_bucket[5m])))",
+     "legendFormat": "p95",
+     "range": true
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 12
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "none"
+    }
+   },
+   "id": 11
+  },
+  {
+   "type": "row",
+   "title": "Act 2 \u00b7 Did the inputs move? (no labels needed)",
+   "collapsed": false,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 16
+   },
+   "panels": [],
+   "id": 12
   },
   {
    "type": "trend",
@@ -439,7 +735,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 8,
+    "y": 17,
     "w": 8,
     "h": 8
    },
@@ -632,7 +928,7 @@
      "sort": "none"
     }
    },
-   "id": 9
+   "id": 13
   },
   {
    "type": "trend",
@@ -644,7 +940,7 @@
    },
    "gridPos": {
     "x": 8,
-    "y": 8,
+    "y": 17,
     "w": 8,
     "h": 8
    },
@@ -817,7 +1113,7 @@
      "sort": "none"
     }
    },
-   "id": 10
+   "id": 14
   },
   {
    "type": "trend",
@@ -829,7 +1125,7 @@
    },
    "gridPos": {
     "x": 16,
-    "y": 8,
+    "y": 17,
     "w": 8,
     "h": 8
    },
@@ -1018,20 +1314,7 @@
      "sort": "none"
     }
    },
-   "id": 11
-  },
-  {
-   "type": "row",
-   "title": "Which feature moved? (PSI by feature and week)",
-   "collapsed": false,
-   "gridPos": {
-    "h": 1,
-    "w": 24,
-    "x": 0,
-    "y": 16
-   },
-   "panels": [],
-   "id": 12
+   "id": 15
   },
   {
    "type": "table",
@@ -1043,7 +1326,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 17,
+    "y": 25,
     "w": 24,
     "h": 27
    },
@@ -1134,20 +1417,20 @@
     "showHeader": true,
     "cellHeight": "sm"
    },
-   "id": 13
+   "id": 16
   },
   {
    "type": "row",
-   "title": "Performance (labels arrive a week late)",
+   "title": "Act 3 \u00b7 Did the model get worse? (labels arrive a week late)",
    "collapsed": false,
    "gridPos": {
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 44
+    "y": 52
    },
    "panels": [],
-   "id": 14
+   "id": 17
   },
   {
    "type": "trend",
@@ -1159,7 +1442,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 45,
+    "y": 53,
     "w": 8,
     "h": 8
    },
@@ -1310,7 +1593,7 @@
      "sort": "none"
     }
    },
-   "id": 15
+   "id": 18
   },
   {
    "type": "trend",
@@ -1322,7 +1605,7 @@
    },
    "gridPos": {
     "x": 8,
-    "y": 45,
+    "y": 53,
     "w": 8,
     "h": 8
    },
@@ -1473,7 +1756,7 @@
      "sort": "none"
     }
    },
-   "id": 16
+   "id": 19
   },
   {
    "type": "trend",
@@ -1485,7 +1768,7 @@
    },
    "gridPos": {
     "x": 16,
-    "y": 45,
+    "y": 53,
     "w": 8,
     "h": 8
    },
@@ -1658,647 +1941,339 @@
      "sort": "none"
     }
    },
-   "id": 17
-  },
-  {
-   "type": "row",
-   "title": "Where is it getting worse? (14 slices over two weeks)",
-   "collapsed": false,
-   "gridPos": {
-    "h": 1,
-    "w": 24,
-    "x": 0,
-    "y": 53
-   },
-   "panels": [],
-   "id": 18
-  },
-  {
-   "type": "table",
-   "title": "Slice AUC-PR drop against the champion's own baseline (weeks across, slices down)",
-   "description": "Each cell = the slice's validation AUC-PR minus its AUC-PR over the last two labelled weeks. Green is fine, red is a clear drop. Slices are fixed cut points from the training window; the injected segment (age <= 45, income <= median) is not hand-picked into any slice.",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "prometheus"
-   },
-   "gridPos": {
-    "x": 0,
-    "y": 54,
-    "w": 24,
-    "h": 16
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "prometheus"
-     },
-     "expr": "label_replace(slice_auc_pr_baseline - slice_auc_pr, \"week\", \"0$1\", \"week\", `^(\\d)$`)",
-     "instant": true,
-     "range": false,
-     "format": "table"
-    }
-   ],
-   "transformations": [
-    {
-     "id": "groupingToMatrix",
-     "options": {
-      "columnField": "week",
-      "rowField": "slice",
-      "valueField": "Value",
-      "emptyValue": "null"
-     }
-    }
-   ],
-   "fieldConfig": {
-    "defaults": {
-     "decimals": 3,
-     "custom": {
-      "cellOptions": {
-       "type": "color-background",
-       "mode": "basic"
-      },
-      "align": "center",
-      "width": 72
-     },
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       {
-        "color": "green",
-        "value": null
-       },
-       {
-        "color": "yellow",
-        "value": 0.03
-       },
-       {
-        "color": "orange",
-        "value": 0.06
-       },
-       {
-        "color": "red",
-        "value": 0.09
-       }
-      ]
-     },
-     "color": {
-      "mode": "thresholds"
-     }
-    },
-    "overrides": [
-     {
-      "matcher": {
-       "id": "byName",
-       "options": "slice\\week"
-      },
-      "properties": [
-       {
-        "id": "custom.width",
-        "value": 210
-       }
-      ]
-     }
-    ]
-   },
-   "options": {
-    "showHeader": true,
-    "cellHeight": "sm"
-   },
-   "id": 19
-  },
-  {
-   "type": "row",
-   "title": "What happened and why",
-   "collapsed": false,
-   "gridPos": {
-    "h": 1,
-    "w": 24,
-    "x": 0,
-    "y": 70
-   },
-   "panels": [],
    "id": 20
   },
   {
-   "type": "table",
-   "title": "Diagnosed cause by week",
-   "description": "Week-over-week signals, not versus the Reference: features changed, score changed, performance dropped.",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "prometheus"
-   },
-   "gridPos": {
-    "x": 0,
-    "y": 71,
-    "w": 8,
-    "h": 14
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "prometheus"
-     },
-     "expr": "label_replace(sum by (week, cause) (diagnosis), \"week\", \"0$1\", \"week\", `^(\\d)$`)",
-     "instant": true,
-     "range": false,
-     "format": "table"
-    }
-   ],
-   "transformations": [
-    {
-     "id": "sortBy",
-     "options": {
-      "fields": {},
-      "sort": [
-       {
-        "field": "week"
-       }
-      ]
-     }
-    },
-    {
-     "id": "organize",
-     "options": {
-      "excludeByName": {
-       "Time": true,
-       "Value": true,
-       "job": true,
-       "stage": true
-      },
-      "indexByName": {
-       "week": 0,
-       "cause": 1
-      },
-      "renameByName": {}
-     }
-    }
-   ],
-   "fieldConfig": {
-    "defaults": {
-     "custom": {
-      "align": "left"
-     }
-    },
-    "overrides": [
-     {
-      "matcher": {
-       "id": "byName",
-       "options": "cause"
-      },
-      "properties": [
-       {
-        "id": "mappings",
-        "value": [
-         {
-          "type": "value",
-          "options": {
-           "covariate_shift": {
-            "color": "orange",
-            "index": 0
-           },
-           "concept_drift": {
-            "color": "red",
-            "index": 1
-           },
-           "technical": {
-            "color": "purple",
-            "index": 2
-           },
-           "label_shift": {
-            "color": "blue",
-            "index": 3
-           },
-           "none": {
-            "color": "green",
-            "index": 4
-           }
-          }
-         }
-        ]
-       },
-       {
-        "id": "custom.cellOptions",
-        "value": {
-         "type": "color-text"
-        }
-       }
-      ]
-     }
-    ]
-   },
-   "options": {
-    "showHeader": true,
-    "cellHeight": "sm"
-   },
-   "id": 21
-  },
-  {
-   "type": "table",
-   "title": "Alerts raised",
-   "description": "Each row is an alert about that week. Performance alerts appear a week after the week they describe.",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "prometheus"
-   },
-   "gridPos": {
-    "x": 8,
-    "y": 71,
-    "w": 16,
-    "h": 14
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "prometheus"
-     },
-     "expr": "label_replace(sum by (week, rule, severity) (alert_firing), \"week\", \"0$1\", \"week\", `^(\\d)$`)",
-     "instant": true,
-     "range": false,
-     "format": "table"
-    }
-   ],
-   "transformations": [
-    {
-     "id": "sortBy",
-     "options": {
-      "fields": {},
-      "sort": [
-       {
-        "field": "week"
-       }
-      ]
-     }
-    },
-    {
-     "id": "organize",
-     "options": {
-      "excludeByName": {
-       "Time": true,
-       "Value": true,
-       "job": true,
-       "stage": true
-      },
-      "indexByName": {
-       "week": 0,
-       "rule": 1,
-       "severity": 2
-      },
-      "renameByName": {}
-     }
-    }
-   ],
-   "fieldConfig": {
-    "defaults": {
-     "custom": {
-      "align": "left"
-     }
-    },
-    "overrides": [
-     {
-      "matcher": {
-       "id": "byName",
-       "options": "severity"
-      },
-      "properties": [
-       {
-        "id": "mappings",
-        "value": [
-         {
-          "type": "value",
-          "options": {
-           "critical": {
-            "color": "red",
-            "index": 0
-           },
-           "high": {
-            "color": "orange",
-            "index": 1
-           },
-           "medium": {
-            "color": "yellow",
-            "index": 2
-           }
-          }
-         }
-        ]
-       },
-       {
-        "id": "custom.cellOptions",
-        "value": {
-         "type": "color-text"
-        }
-       }
-      ]
-     }
-    ]
-   },
-   "options": {
-    "showHeader": true,
-    "cellHeight": "sm"
-   },
-   "id": 22
-  },
-  {
    "type": "row",
-   "title": "Contract and serving",
-   "collapsed": false,
+   "title": "Details: where it got worse, why, and which alerts fired (click to open)",
+   "collapsed": true,
    "gridPos": {
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 85
+    "y": 61
    },
-   "panels": [],
-   "id": 23
-  },
-  {
-   "type": "trend",
-   "title": "Contract outcome by week",
-   "description": "",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "prometheus"
-   },
-   "gridPos": {
-    "x": 0,
-    "y": 86,
-    "w": 8,
-    "h": 7
-   },
-   "targets": [
+   "panels": [
     {
-     "refId": "A",
+     "type": "table",
+     "title": "Slice AUC-PR drop against the champion's own baseline (weeks across, slices down)",
+     "description": "Each cell = the slice's validation AUC-PR minus its AUC-PR over the last two labelled weeks. Green is fine, red is a clear drop. Slices are fixed cut points from the training window; the injected segment (age <= 45, income <= median) is not hand-picked into any slice.",
      "datasource": {
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "label_replace(sum by (week) (batch_blocked), \"week\", \"0$1\", \"week\", `^(\\d)$`)",
-     "instant": true,
-     "range": false,
-     "format": "table"
-    },
-    {
-     "refId": "B",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "prometheus"
+     "gridPos": {
+      "x": 0,
+      "y": 62,
+      "w": 24,
+      "h": 16
      },
-     "expr": "label_replace(sum by (week) (batch_contract_warnings), \"week\", \"0$1\", \"week\", `^(\\d)$`)",
-     "instant": true,
-     "range": false,
-     "format": "table"
-    }
-   ],
-   "transformations": [
-    {
-     "id": "joinByField",
-     "options": {
-      "byField": "week",
-      "mode": "outer"
-     }
-    },
-    {
-     "id": "sortBy",
-     "options": {
-      "fields": {},
-      "sort": [
-       {
-        "field": "week"
-       }
-      ]
-     }
-    },
-    {
-     "id": "convertFieldType",
-     "options": {
-      "conversions": [
-       {
-        "targetField": "week",
-        "destinationType": "number"
-       }
-      ]
-     }
-    },
-    {
-     "id": "filterFieldsByName",
-     "options": {
-      "include": {
-       "pattern": "^(week|Value.*)$"
+     "targets": [
+      {
+       "refId": "A",
+       "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+       },
+       "expr": "label_replace(slice_auc_pr_baseline - slice_auc_pr, \"week\", \"0$1\", \"week\", `^(\\d)$`)",
+       "instant": true,
+       "range": false,
+       "format": "table"
       }
-     }
-    }
-   ],
-   "fieldConfig": {
-    "defaults": {
-     "unit": "none",
-     "decimals": 0,
-     "min": 0,
-     "custom": {
-      "drawStyle": "line",
-      "lineWidth": 2,
-      "fillOpacity": 0,
-      "showPoints": "always",
-      "pointSize": 7,
-      "spanNulls": true
-     },
-     "color": {
-      "mode": "palette-classic"
-     }
-    },
-    "overrides": [
-     {
-      "matcher": {
-       "id": "byName",
-       "options": "Value #A"
-      },
-      "properties": [
-       {
-        "id": "displayName",
-        "value": "blocked (1 = rejected)"
+     ],
+     "transformations": [
+      {
+       "id": "groupingToMatrix",
+       "options": {
+        "columnField": "week",
+        "rowField": "slice",
+        "valueField": "Value",
+        "emptyValue": "null"
        }
-      ]
-     },
-     {
-      "matcher": {
-       "id": "byName",
-       "options": "Value #B"
-      },
-      "properties": [
-       {
-        "id": "displayName",
-        "value": "warnings"
-       }
-      ]
-     },
-     {
-      "matcher": {
-       "id": "byName",
-       "options": "blocked (1 = rejected)"
-      },
-      "properties": [
-       {
-        "id": "color",
-        "value": {
-         "mode": "fixed",
-         "fixedColor": "red"
-        }
-       }
-      ]
-     },
-     {
-      "matcher": {
-       "id": "byName",
-       "options": "warnings"
-      },
-      "properties": [
-       {
-        "id": "color",
-        "value": {
-         "mode": "fixed",
-         "fixedColor": "yellow"
-        }
-       }
-      ]
-     },
-     {
-      "matcher": {
-       "id": "byName",
-       "options": "week"
-      },
-      "properties": [
-       {
-        "id": "min",
-        "value": 1
+      }
+     ],
+     "fieldConfig": {
+      "defaults": {
+       "decimals": 3,
+       "custom": {
+        "cellOptions": {
+         "type": "color-background",
+         "mode": "basic"
+        },
+        "align": "center",
+        "width": 72
        },
-       {
-        "id": "max",
-        "value": 16
+       "thresholds": {
+        "mode": "absolute",
+        "steps": [
+         {
+          "color": "green",
+          "value": null
+         },
+         {
+          "color": "yellow",
+          "value": 0.03
+         },
+         {
+          "color": "orange",
+          "value": 0.06
+         },
+         {
+          "color": "red",
+          "value": 0.09
+         }
+        ]
        },
+       "color": {
+        "mode": "thresholds"
+       }
+      },
+      "overrides": [
        {
-        "id": "decimals",
-        "value": 0
+        "matcher": {
+         "id": "byName",
+         "options": "slice\\week"
+        },
+        "properties": [
+         {
+          "id": "custom.width",
+          "value": 210
+         }
+        ]
        }
       ]
-     }
-    ]
-   },
-   "options": {
-    "xField": "week",
-    "legend": {
-     "displayMode": "list",
-     "placement": "bottom",
-     "showLegend": true
+     },
+     "options": {
+      "showHeader": true,
+      "cellHeight": "sm"
+     },
+     "id": 22
     },
-    "tooltip": {
-     "mode": "multi",
-     "sort": "none"
-    }
-   },
-   "id": 24
-  },
-  {
-   "type": "timeseries",
-   "title": "Server requests per minute",
-   "description": "Scraped straight from the model server (the pull side of the push/pull pair).",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "prometheus"
-   },
-   "gridPos": {
-    "x": 8,
-    "y": 86,
-    "w": 8,
-    "h": 7
-   },
-   "targets": [
     {
-     "refId": "A",
+     "type": "table",
+     "title": "Diagnosed cause by week",
+     "description": "Week-over-week signals, not versus the Reference: features changed, score changed, performance dropped.",
      "datasource": {
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "sum by (outcome) (rate(predict_requests_total[5m])) * 60",
-     "legendFormat": "{{outcome}}",
-     "range": true
-    }
-   ],
-   "fieldConfig": {
-    "defaults": {
-     "unit": "none",
-     "custom": {
-      "lineWidth": 2,
-      "fillOpacity": 12
-     }
+     "gridPos": {
+      "x": 0,
+      "y": 78,
+      "w": 8,
+      "h": 14
+     },
+     "targets": [
+      {
+       "refId": "A",
+       "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+       },
+       "expr": "label_replace(sum by (week, cause) (diagnosis), \"week\", \"0$1\", \"week\", `^(\\d)$`)",
+       "instant": true,
+       "range": false,
+       "format": "table"
+      }
+     ],
+     "transformations": [
+      {
+       "id": "sortBy",
+       "options": {
+        "fields": {},
+        "sort": [
+         {
+          "field": "week"
+         }
+        ]
+       }
+      },
+      {
+       "id": "organize",
+       "options": {
+        "excludeByName": {
+         "Time": true,
+         "Value": true,
+         "job": true,
+         "stage": true
+        },
+        "indexByName": {
+         "week": 0,
+         "cause": 1
+        },
+        "renameByName": {}
+       }
+      }
+     ],
+     "fieldConfig": {
+      "defaults": {
+       "custom": {
+        "align": "left"
+       }
+      },
+      "overrides": [
+       {
+        "matcher": {
+         "id": "byName",
+         "options": "cause"
+        },
+        "properties": [
+         {
+          "id": "mappings",
+          "value": [
+           {
+            "type": "value",
+            "options": {
+             "covariate_shift": {
+              "color": "orange",
+              "index": 0
+             },
+             "concept_drift": {
+              "color": "red",
+              "index": 1
+             },
+             "technical": {
+              "color": "purple",
+              "index": 2
+             },
+             "label_shift": {
+              "color": "blue",
+              "index": 3
+             },
+             "none": {
+              "color": "green",
+              "index": 4
+             }
+            }
+           }
+          ]
+         },
+         {
+          "id": "custom.cellOptions",
+          "value": {
+           "type": "color-text"
+          }
+         }
+        ]
+       }
+      ]
+     },
+     "options": {
+      "showHeader": true,
+      "cellHeight": "sm"
+     },
+     "id": 23
     },
-    "overrides": []
-   },
-   "options": {
-    "legend": {
-     "displayMode": "list",
-     "placement": "bottom",
-     "showLegend": true
-    },
-    "tooltip": {
-     "mode": "multi",
-     "sort": "none"
-    }
-   },
-   "id": 25
-  },
-  {
-   "type": "timeseries",
-   "title": "Server latency, 95th percentile",
-   "description": "",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "prometheus"
-   },
-   "gridPos": {
-    "x": 16,
-    "y": 86,
-    "w": 8,
-    "h": 7
-   },
-   "targets": [
     {
-     "refId": "A",
+     "type": "table",
+     "title": "Alerts raised",
+     "description": "Each row is an alert about that week. Performance alerts appear a week after the week they describe.",
      "datasource": {
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "histogram_quantile(0.95, sum by (le) (rate(predict_latency_seconds_bucket[5m])))",
-     "legendFormat": "p95",
-     "range": true
+     "gridPos": {
+      "x": 8,
+      "y": 78,
+      "w": 16,
+      "h": 14
+     },
+     "targets": [
+      {
+       "refId": "A",
+       "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+       },
+       "expr": "label_replace(sum by (week, rule, severity) (alert_firing), \"week\", \"0$1\", \"week\", `^(\\d)$`)",
+       "instant": true,
+       "range": false,
+       "format": "table"
+      }
+     ],
+     "transformations": [
+      {
+       "id": "sortBy",
+       "options": {
+        "fields": {},
+        "sort": [
+         {
+          "field": "week"
+         }
+        ]
+       }
+      },
+      {
+       "id": "organize",
+       "options": {
+        "excludeByName": {
+         "Time": true,
+         "Value": true,
+         "job": true,
+         "stage": true
+        },
+        "indexByName": {
+         "week": 0,
+         "rule": 1,
+         "severity": 2
+        },
+        "renameByName": {}
+       }
+      }
+     ],
+     "fieldConfig": {
+      "defaults": {
+       "custom": {
+        "align": "left"
+       }
+      },
+      "overrides": [
+       {
+        "matcher": {
+         "id": "byName",
+         "options": "severity"
+        },
+        "properties": [
+         {
+          "id": "mappings",
+          "value": [
+           {
+            "type": "value",
+            "options": {
+             "critical": {
+              "color": "red",
+              "index": 0
+             },
+             "high": {
+              "color": "orange",
+              "index": 1
+             },
+             "medium": {
+              "color": "yellow",
+              "index": 2
+             }
+            }
+           }
+          ]
+         },
+         {
+          "id": "custom.cellOptions",
+          "value": {
+           "type": "color-text"
+          }
+         }
+        ]
+       }
+      ]
+     },
+     "options": {
+      "showHeader": true,
+      "cellHeight": "sm"
+     },
+     "id": 24
     }
    ],
-   "fieldConfig": {
-    "defaults": {
-     "unit": "s",
-     "custom": {
-      "lineWidth": 2,
-      "fillOpacity": 12
-     }
-    },
-    "overrides": []
-   },
-   "options": {
-    "legend": {
-     "displayMode": "list",
-     "placement": "bottom",
-     "showLegend": true
-    },
-    "tooltip": {
-     "mode": "multi",
-     "sort": "none"
-    }
-   },
-   "id": 26
+   "id": 21
   }
  ]
 }

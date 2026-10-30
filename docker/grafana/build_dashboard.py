@@ -173,11 +173,13 @@ def build() -> dict:
     psi_lines = steps((GREEN, None), (ORANGE, 0.10), (RED, 0.25))
     panels = [
         text("How to read this dashboard",
+             "**Three acts, top to bottom:** is the data valid (the contract), did the inputs move, did the model get worse. "
+             "The last row, collapsed, holds the slices, the diagnosis and the alerts. "
              "**Weeks are simulated** (1 to 16) and are plotted by week number on the x axis, not as time. Inputs and score describe "
              "week N the day it runs. **Performance and slices need labels, which arrive a week late**, so they show week N "
              "only after week N+1 has run (week 9's labels never arrive: its batch was blocked). Alerts repeat from week 5 "
              "because the drift baseline stays the champion's training window until a new model is promoted.",
-             0, 0, 24, 3),
+             0, 0, 24, 4),
         stat("Weeks monitored", "count(batch_rows)", 0, 3, 4, 4, steps((GREEN, None)), 0),
         stat("Batches blocked by the contract", "sum(batch_blocked)", 4, 3, 4, 4, steps((GREEN, None), (RED, 1)), 0),
         stat("Worst drift (max PSI)", "max(drift_max_psi)", 8, 3, 4, 4, psi_lines, 2,
@@ -230,14 +232,41 @@ def build() -> dict:
         timeseries("Server latency, 95th percentile", "histogram_quantile(0.95, sum by (le) (rate(predict_latency_seconds_bucket[5m])))",
                    "p95", 16, 58, 8, 7, unit="s"),
     ]
-    shift = 28  # room for the per-feature row, inserted right after the inputs row
-    for p in panels:
-        if p["gridPos"]["y"] >= 16:
-            p["gridPos"]["y"] += shift
-    at = next(i for i, p in enumerate(panels) if p["type"] == "row" and p["title"].startswith("Performance"))
-    panels[at:at] = [row("Which feature moved? (PSI by feature and week)", 16), feature_matrix(0, 17, 24, 27)]
-    for i, panel in enumerate(panels, start=1):
-        panel["id"] = i
+    def find(title, kind=None):
+        return next(p for p in panels if p["title"] == title and (kind is None or p["type"] == kind))
+
+    def put(panel, x, y, w, h):
+        panel["gridPos"] = {"x": x, "y": y, "w": w, "h": h}
+        return panel
+
+    # The dashboard follows the story: act 1 the contract, act 2 the inputs, act 3 the performance; the rest is collapsed.
+    tiles = [put(p, p["gridPos"]["x"], p["gridPos"]["y"] + (1 if p["type"] == "stat" else 0), p["gridPos"]["w"],
+                 p["gridPos"]["h"]) for p in panels if p["type"] in ("text", "stat")]
+    act1 = [row("Act 1 · Is the data valid? (the contract, and the server's health)", 8),
+            put(find("Contract outcome by week"), 0, 9, 8, 7),
+            put(find("Server requests per minute"), 8, 9, 8, 7),
+            put(find("Server latency, 95th percentile"), 16, 9, 8, 7)]
+    act2 = [row("Act 2 · Did the inputs move? (no labels needed)", 16),
+            put(find("Drift severity by week (PSI)"), 0, 17, 8, 8),
+            put(find("Monitored features past the limits"), 8, 17, 8, 8),
+            put(find("Score drift"), 16, 17, 8, 8),
+            feature_matrix(0, 25, 24, 27)]
+    act3 = [row("Act 3 · Did the model get worse? (labels arrive a week late)", 52),
+            put(find("AUC-PR by week"), 0, 53, 8, 8),
+            put(find("Brier score by week"), 8, 53, 8, 8),
+            put(find("Predicted vs observed default rate"), 16, 53, 8, 8)]
+    details = row("Details: where it got worse, why, and which alerts fired (click to open)", 61)
+    details["collapsed"] = True
+    details["panels"] = [
+        put(find("Slice AUC-PR drop against the champion's own baseline (weeks across, slices down)"), 0, 62, 24, 16),
+        put(find("Diagnosed cause by week"), 0, 78, 8, 14),
+        put(find("Alerts raised", "table"), 8, 78, 16, 14)]
+    panels = tiles + act1 + act2 + act3 + [details]
+    n = 0
+    for panel in panels:
+        for q in [panel, *panel.get("panels", [])]:
+            n += 1
+            q["id"] = n
     return {
         "uid": "credit-scoring-monitoring", "title": "Credit scoring: drift and reliability", "tags": ["credit-drift"],
         "timezone": "browser", "schemaVersion": 41, "version": 1, "editable": True, "graphTooltip": 1, "refresh": "",
