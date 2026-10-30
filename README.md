@@ -152,7 +152,7 @@ anterior, não com a Referência), o registro no MLflow e o envio das métricas 
 
 Limitações assumidas e registradas em `docs/decisions.md` (seção 14): o alerta de PSI se repete até o modelo ser
 retreinado e a base ser trocada; o ranking de fatias aponta renda baixa e idade baixa (as variáveis que definem o
-segmento injetado) por volta da semana 11, mas o limiar de sinalização é conservador e será calibrado depois.
+segmento injetado) por volta da semana 11, mas o limiar de sinalização é conservador e assim foi mantido (decisão #16); a matriz de fatias do Grafana faz o ranking.
 
 ## Dashboard (Grafana)
 
