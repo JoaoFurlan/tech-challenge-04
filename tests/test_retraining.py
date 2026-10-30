@@ -92,12 +92,14 @@ def test_the_first_major_drift_alert_triggers_the_first_retrain():
     assert policy.trigger_for(3, [_alert("data_drift_major", 3)], []) is None  # too few labelled weeks
 
 
-def test_a_labelled_week_is_tried_once_and_a_performance_drop_triggers_a_later_retrain():
+def test_a_failed_attempt_cools_down_and_a_performance_drop_triggers_a_later_retrain():
     failed = {"run_week": 5, "through_week": 4, "promoted": False}
     assert policy.trigger_for(6, [_alert("data_drift_major", 6)], [failed]) is None  # drift alert alone: already tried
     assert policy.trigger_for(11, [_alert("performance_drop", 10)], [failed]) == "performance_drop"
     again = {"run_week": 11, "through_week": 10, "promoted": False}
     assert policy.trigger_for(11, [_alert("performance_drop", 10)], [failed, again]) is None
+    assert policy.trigger_for(12, [_alert("performance_drop", 11)], [failed, again]) is None  # cooldown: one new week
+    assert policy.trigger_for(14, [_alert("performance_drop", 13)], [failed, again]) == "performance_drop"
     seen = {"run_week": 5, "through_week": 4, "promoted": True}  # the champion already trained on week 4
     assert policy.trigger_for(7, [_alert("performance_drop", 4)], [seen]) is None
 

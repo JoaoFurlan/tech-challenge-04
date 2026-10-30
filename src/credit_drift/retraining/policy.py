@@ -4,7 +4,8 @@
 
 Retrain #1 on the first major data-drift alert; later retrains when a performance-drop alert is about a week the current
 champion has not seen. Labels arrive a week late, so the run of week N can use labels through week N-1. The state file
-is the retraining history: it also stops a failed gate from retraining again on the same labels.
+is the retraining history: after an attempt, a cooldown of COOLDOWN_WEEKS new labelled weeks stops a failed gate from
+retraining again every week on nearly the same labels.
 """
 import argparse
 import json
@@ -13,6 +14,7 @@ from pathlib import Path
 from credit_drift.monitoring.weekly import ROOT, read_json
 
 STATE = ROOT / "retraining.json"
+COOLDOWN_WEEKS = 3  # new labelled weeks needed before the same drift is tried again after a failed gate
 
 
 def load_state(path: Path = STATE) -> list[dict]:
@@ -31,8 +33,8 @@ def champion_labels_through(events: list[dict]) -> int:
 
 def trigger_for(week: int, alerts: list[dict], events: list[dict]) -> str | None:
     through = week - 1
-    if through < 3 or any(e["through_week"] >= through for e in events):
-        return None  # too few labelled weeks, or this labelled data was already tried
+    if through < 3 or any(through - e["through_week"] < COOLDOWN_WEEKS for e in events):
+        return None  # too few labelled weeks, or the last attempt is too recent to have new evidence
     rules = {a["rule"]: a for a in alerts}
     if "performance_drop" in rules and rules["performance_drop"]["about_week"] > champion_labels_through(events):
         return "performance_drop"
