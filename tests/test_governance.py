@@ -43,3 +43,16 @@ def test_group_table_reports_rates_per_group_and_the_gaps():
     assert table["F"]["rows"] + table["M"]["rows"] == n
     assert table["gaps_M_minus_F"]["flag_rate"] == pytest.approx(table["M"]["flag_rate"] - table["F"]["flag_rate"], abs=1e-4)
     assert table["M"]["observed_default_rate"] > table["F"]["observed_default_rate"]
+
+
+def test_bands_table_covers_the_age_bands_and_reports_the_same_metrics():
+    rng = np.random.default_rng(2)
+    n = 8000
+    age = rng.uniform(18, 80, n)
+    y = (rng.random(n) < np.clip(0.2 - 0.0025 * (age - 18), 0.02, 0.2)).astype(int)
+    p = np.clip(0.04 + 0.25 * y + rng.normal(0, 0.06, n), 0.001, 0.999)
+    table = fairness.bands_table(y, p, age, 1 / 6)
+    assert list(table) == ["18-29", "30-44", "45-59", "60+"]
+    assert sum(b["rows"] for b in table.values()) == n
+    assert table["18-29"]["observed_default_rate"] > table["60+"]["observed_default_rate"]
+    assert {"flag_rate", "recall", "false_positive_rate", "mean_predicted"} <= set(table["30-44"])

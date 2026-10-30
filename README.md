@@ -493,26 +493,40 @@ treinados deixam de conter o dado depois do próximo retreino (*). A revisão de
 
 ### Mitigação de vieses
 
-**Em palavras simples:** viés aqui é o modelo errar mais para um grupo do que para outro, mesmo sem usar a característica. **Exemplo:** de 100 clientes que pagariam, 13 homens e 8 mulheres são barrados. **Impacto:** risco de discriminação indireta (LGPD, art. 6º, IX), que excluir o gênero do modelo não elimina.
+**Em palavras simples:** viés aqui é o modelo errar mais para um grupo do que para outro, mesmo sem usar a característica. **Exemplo:** de 100 clientes que pagariam, 13 homens e 8 mulheres são barrados; de 18 a 29 anos, 20 são barrados, contra 2 com 60 anos ou mais. **Impacto:** risco de discriminação indireta (LGPD, art. 6º, IX), que excluir o gênero do modelo não elimina.
 
-`CODE_GENDER` não entra no modelo, mas a verificação de viés exige medir por gênero. Resultado do campeão (v1) na parte de teste
-da Referência, no limiar de decisão (1/6), calculado por `credit_drift.monitoring.fairness` (`docs/calibration/fairness.json`):
+**As métricas usadas** (todas por grupo, no limiar de decisão de 1/6, na parte de teste da Referência, calculadas por
+`credit_drift.monitoring.fairness` e guardadas em `docs/calibration/fairness.json`):
 
-| Grupo | Linhas | Inadimplência observada | Probabilidade média | Sinalizados como alto risco | Recall | Falso positivo | AUC-PR |
-|---|---|---|---|---|---|---|---|
-| Mulheres (F) | 27.387 | 7,0% | 7,4% | 9,9% | 35,0% | 8,1% | 0,225 |
-| Homens (M) | 14.116 | 10,2% | 9,4% | 16,1% | 43,3% | 13,0% | 0,275 |
+| Métrica (nome técnico) | Em palavras simples | O que mostra |
+|---|---|---|
+| **Calibração por grupo** | a probabilidade prevista bate com a taxa observada em cada grupo | se o modelo é igualmente confiável para todos |
+| **Taxa de sinalização** (paridade demográfica) | de cada 100 do grupo, quantos o modelo barra | se um grupo é barrado mais que outro |
+| **Taxa de falso positivo** (parte da igualdade de erros) | de cada 100 que pagariam, quantos o modelo barra | quem paga o custo de um erro do modelo |
+| **Recall** (igualdade de oportunidade) | de cada 100 que não pagariam, quantos o modelo acha | se o modelo acha os maus pagadores igualmente em todos os grupos |
 
-Os homens são sinalizados **1,61 vez** mais, e a taxa de falso positivo deles é maior (13,0% contra 8,1%): clientes homens que
-**não** inadimplem são barrados com mais frequência. Parte da diferença acompanha a inadimplência observada de cada grupo (10,2%
-contra 7,0%), e o modelo subestima um pouco os homens (9,4% previsto contra 10,2% observado), mas a disparidade nas taxas de erro é
-um risco de discriminação indireta que **o gênero estar fora do modelo não elimina**: outras colunas podem servir de proxy.
-Isso é um achado a levar ao jurídico e ao comitê de risco (*), não algo que este projeto resolve.
+| Grupo | Clientes | Inadimplência observada | Probabilidade prevista | Sinalizados | Falso positivo | Recall |
+|---|---|---|---|---|---|---|
+| Mulheres | 27.387 | 7,0% | 7,4% | 9,9% | 8,1% | 35,0% |
+| Homens | 14.116 | 10,2% | 9,4% | 16,1% | 13,0% | 43,3% |
+| 18 a 29 anos | 6.021 | 11,9% | 12,0% | 23,8% | 19,9% | 52,8% |
+| 30 a 44 anos | 16.744 | 8,9% | 8,8% | 14,0% | 11,3% | 41,9% |
+| 45 a 59 anos | 13.967 | 6,7% | 6,6% | 7,8% | 6,3% | 29,1% |
+| 60 anos ou mais | 4.771 | 4,7% | 4,9% | 2,5% | 2,1% | 9,9% |
 
-O que existe: o gênero é uma fatia do monitoramento semanal (a matriz do Grafana mostra a queda de AUC-PR por gênero a cada semana),
-então uma piora desigual aparece. O que **não** foi feito, por exigir decisão de negócio e jurídica: remover variáveis proxy,
-reponderar o treino, ou limiares por grupo (que, em crédito, podem ser eles mesmos discriminatórios). Limite assumido: só há
-gênero binário no dado, e outras características protegidas (idade, por exemplo) não foram auditadas por grupo.
+**O que os números dizem.** A **calibração se mantém em todos os grupos** (por exemplo, 12,0% previsto e 11,9% observado de 18 a
+29 anos), então as probabilidades são igualmente confiáveis. Mas as **taxas de erro diferem**: os homens são sinalizados 1,61 vez
+mais e têm mais falsos positivos (13,0% contra 8,1%); os mais jovens são sinalizados cerca de 9 vezes mais que os mais velhos e
+têm falsos positivos de 19,9% contra 2,1%. Em boa parte isso acompanha a inadimplência real de cada grupo, mas não é possível
+igualar todas as métricas ao mesmo tempo quando os grupos têm taxas de inadimplência diferentes: é preciso escolher qual
+igualdade perseguir e justificar a escolha. Isso é um achado a levar ao jurídico e ao comitê de risco (*), não algo que este
+projeto resolve. A idade é entrada do modelo (uso comum em crédito, mas que pede justificativa e base legal (*)); o gênero não é.
+
+**Como evitamos o viés, e o que falta.** O que existe: (1) o gênero fica fora do modelo; (2) o gênero e a idade são fatias do
+monitoramento semanal (a matriz do Grafana mostra a queda de AUC-PR por fatia a cada semana), então uma piora desigual aparece;
+(3) esta auditoria por grupo, com mais de uma métrica. O que **não** foi feito, por exigir decisão de negócio e jurídica:
+remover variáveis proxy, reponderar o treino, ou limiares por grupo (que, em crédito, podem ser eles mesmos discriminatórios).
+Limite assumido: só há gênero binário no dado, e outras características (estado civil, escolaridade) não foram auditadas.
 
 ### Acesso e reprodução dos dados
 
