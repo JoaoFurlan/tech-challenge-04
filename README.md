@@ -219,7 +219,7 @@ semanas 14–16, que nenhum modelo viu: AUC-PR +0,011 (IC 95% +0,002 a +0,020), 
 0,216), e neutro fora dele. Ainda assim o portão não o aprovou: na fatia dele a estimativa foi −0,005 (IC −0,017 a +0,009),
 compatível com o ruído. Com cerca de 5 mil clientes por semana e 8% de inadimplência, um ganho de um ponto de AUC-PR não
 é certificável por uma validação curta; em produção isso pede um período de sombra mais longo, acumulando rótulos antes
-de promover (não implementado aqui). Análises em `notebooks/02_retrain_v2.ipynb` e `03_retrain_v3.ipynb` (HTML em
+de promover (não implementado aqui). Análise em `notebooks/02_retraining.ipynb`, que cobre as três tentativas (HTML em
 `docs/reports/`); decisões, incluindo o que foi ajustado depois de ver resultados (post hoc), na seção 18 de
 `docs/decisions.md`. Limitação: o caminho de promoção (mudança de alias, recarga, nova janela de referência de drift) não
 foi exercitado no laço real, só em testes unitários; e a ordem de grandeza do ganho (+0,011) é indicativa, não um teste

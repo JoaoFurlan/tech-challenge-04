@@ -221,7 +221,7 @@ anything that must run unattended is an Airflow task.
   and its mechanism, ranges, duplicates, relationships with the target, leakage checks — ending
   in facts and open questions. Decisions taken from it (contract rules, null treatment, feature
   variants, drift variables, slices, drift accumulation) live in `docs/decisions.md`.
-- Retraining analysis notebooks, one per retrain (`02_retrain_v2.ipynb`, `03_retrain_v3.ipynb`):
+- One retraining analysis notebook (`02_retraining.ipynb`, covering every retrain attempt):
   investigate *why* and *whether it helped* — the drift diagnosis behind the trigger, candidate
   comparison, reliability diagrams before/after recalibration, per-slice AUC-PR, bootstrap CIs
   on the v2 − v1 and v3 − v1 gaps. The retraining itself (data window, training, registration)

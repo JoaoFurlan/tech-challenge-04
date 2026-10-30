@@ -152,8 +152,8 @@ Ordered implementation plan for the Tech Challenge 4 project. Design decisions l
 - [x] **You:** agree the promotion gate margin and label delay (open items). (One week; a paired-bootstrap gate, no fixed margin.)
 - [x] **Claude:** `retraining_pipeline` DAG; after the week-5 alert build v2 from labels
       available under the delay, register `challenger`, pass the gate, move the alias, call
-      `/reload`; repeat for v3 after week 11. Notebooks `02_retrain_v2`, `03_retrain_v3`
-      analyse why and whether it helped.
+      `/reload`; repeat for v3 after week 11. The notebook `02_retraining`
+      analyses why and whether it helped.
 - **Why:** shows the lifecycle (alert -> retrain -> compare -> promote) and measures what
   helped. Updates the dashboard's champion, baseline window and comparison lines.
 - Repeat step 15's check with retraining enabled; this becomes the local reference run. (Done on a 16-week timeline: all three gates failed, the champion never changed, though the week-14 candidate helps on unseen weeks; decision #18.)

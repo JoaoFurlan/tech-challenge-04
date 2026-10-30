@@ -507,8 +507,8 @@ reference for the video and for the comparison with the AWS rerun.
 Code in `src/credit_drift/retraining/`: `window.py` (the data a retrain may use), `candidates.py`, `gate.py`, `policy.py`
 (the trigger), `run.py` (`build` and `promote` steps), `analysis.py` (notebook helpers). DAG `retraining_pipeline`
 (`decide -> build_candidates -> promote`); `production_monitoring` ends with `check_retraining`, which triggers it and
-waits, so the next simulated week scores with whatever model is champion by then. Notebooks `02_retrain_v2` and
-`03_retrain_v3` (HTML in `docs/reports/`) only read what the pipeline logged. Approved by the repo owner: label delay of
+waits, so the next simulated week scores with whatever model is champion by then. The notebook `02_retraining`
+(HTML in `docs/reports/`) covers all three attempts and only reads what the pipeline logged. Approved by the repo owner: label delay of
 one week, a paired-bootstrap gate instead of a fixed margin, and the 16-week timeline.
 
 **Data window.** Reference train part plus the production weeks whose labels have arrived (a run after week N's batch uses
