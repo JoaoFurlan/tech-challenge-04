@@ -154,6 +154,16 @@ Limitações assumidas e registradas em `docs/decisions.md` (seção 14): o aler
 retreinado e a base ser trocada; o ranking de fatias aponta renda baixa e idade baixa (as variáveis que definem o
 segmento injetado) por volta da semana 11, mas o limiar de sinalização é conservador e será calibrado depois.
 
+## Dashboard (Grafana)
+
+O Grafana (`http://localhost:3000` pelo túnel SSH) reúne a história das 13 semanas em uma tela, provisionado como
+código (`docker/grafana/`): severidade do drift (PSI contra a Referência e contra a janela do campeão, com as faixas
+0,10 e 0,25), variáveis acima dos limites, drift do score, AUC-PR e Brier contra a linha de base do campeão, taxa
+prevista contra observada, uma matriz de fatias (queda de AUC-PR por fatia e semana), a tabela de diagnóstico e de
+alertas por semana, o resultado do contrato de dados e tráfego/latência do servidor. As semanas são o eixo (rótulo
+`week`), e os painéis que dependem de rótulos só mostram a semana N depois da semana N+1, refletindo o atraso real.
+Decisões em `docs/decisions.md` (seção 15).
+
 ## Orquestração (Airflow)
 
 O Airflow 3 roda no servidor Linux (`docker compose`, perfil `airflow`; interface em `http://localhost:8080` por túnel

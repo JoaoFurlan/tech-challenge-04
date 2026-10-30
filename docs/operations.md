@@ -68,6 +68,14 @@ Outputs: `artifacts/monitoring/week_NN/*.json` and `baseline_v<version>.json` on
 the MLflow experiment `production_monitoring`, and the Prometheus series (`drift_*`, `model_*`, `slice_*`, `alert_firing`,
 `diagnosis`).
 
+## Grafana
+
+Part of the `monitoring` profile. Open `http://localhost:3000` through the tunnel (add `-L 3000:localhost:3000`); the
+dashboard "Credit scoring: drift and reliability" is the home page. It is generated code: after editing
+`docker/grafana/build_dashboard.py` run it (`python docker/grafana/build_dashboard.py`), commit the JSON, sync the box
+and Grafana picks the file up within about 30 seconds. If the Pushgateway is ever recreated without its volume, repush
+the weeks with `weekly push --week N` (see decision 15).
+
 ## Heavy runs
 
 Run them on the box so the laptop does not run out of memory:

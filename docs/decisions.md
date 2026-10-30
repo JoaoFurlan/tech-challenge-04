@@ -413,3 +413,29 @@ the compose file under the profile `monitoring`.
      week 7. Step 14 tunes this on two seeds; the dashboard should rank slices by drop rather than rely on the flag.
   3. **One week of AUC-PR is too noisy for a hard 0.04 rule** (week 12 missed, 8/10/11 caught). AUC-ROC is steadier.
 
+
+## 15. The Grafana dashboard (step 13)
+
+Grafana 12.1 runs under the compose profile `monitoring`. Everything is provisioned as code, so a fresh box shows the
+same dashboard: `docker/grafana/provisioning/` (Prometheus datasource, dashboard file provider) and
+`docker/grafana/dashboards/credit-scoring.json`, which is **generated** by `docker/grafana/build_dashboard.py` (edit the
+script, rerun it, commit both).
+
+- **Weeks are labels, not time.** The simulated weeks are pushed in one afternoon, so a time axis would draw every
+  week at the same instant. Panels use the `week` label as the x axis (instant queries, join by `week`, sort). Weeks
+  are zero-padded in the query (`label_replace`) so that 10 sorts after 9.
+- **Label delay is visible.** Panels that depend on labels (AUC-PR, Brier, observed rate, slice matrix, performance
+  alerts) only have a week N once week N+1 has run; the dashboard shows that gap instead of hiding it. Week 9 has no
+  labels by design and shows as a hole.
+- **Slice matrix, not 14 lines.** Slices down, weeks across, cells coloured by AUC-PR drop against the champion's own
+  baseline (0.03 yellow, 0.06 orange, 0.09 red). It ranks slices without relying on the `slice_flagged` rule, which is
+  conservative (decision 14).
+- **Static reference lines** (AUC-PR baseline 0.246, Brier 0.0745) are constants in the generator: rebuild the
+  dashboard when the champion is promoted.
+- **Pushgateway persists** its state in a volume (`--persistence.file`). The weekly metrics are pushed once, so a
+  recreated container used to empty the dashboard. If it happens anyway, repush from the stored artifacts:
+  `python -m credit_drift.monitoring.weekly push --week N` for each week and stage.
+- **Anonymous viewer** is enabled because Grafana is only reachable through the SSH tunnel (127.0.0.1 on the box). The
+  admin password defaults to `admin` for local use; set `GRAFANA_ADMIN_PASSWORD` before exposing it anywhere (AWS: the
+  security group stays restricted to the operator's IP).
+- Verified: every panel's query returns data through the Grafana API, and the rendered dashboard was checked visually.

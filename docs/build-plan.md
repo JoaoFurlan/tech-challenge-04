@@ -125,7 +125,7 @@ Ordered implementation plan for the Tech Challenge 4 project. Design decisions l
 
 ### 13. Prometheus, Pushgateway and Grafana [R]
 - [x] Prometheus and the Pushgateway are in Compose and receive the DAG's metrics (done with step 12).
-- [ ] **Claude:** add Grafana; dashboard: drift severity (two PSI lines), alerts, AUC-PR,
+- [x] **Claude:** add Grafana; dashboard: drift severity (two PSI lines), alerts, AUC-PR,
       Brier, predicted vs observed default rate, slice chart, diagnosis table, pipeline
       health, latency. Provisioned as code so it redeploys unchanged.
 - **Why:** the one-screen story for the video (20%).

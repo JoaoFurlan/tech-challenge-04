@@ -369,4 +369,4 @@ rerun on AWS with the same commit, data, frozen thresholds and champion; never t
 The stack (Postgres, MLflow, model server, later Airflow/Prometheus/Grafana) runs on the Linux box
 `pricing-server`, reached by SSH tunnel; the laptop is the workstation (see `docs/operations.md`; the repo was verified on
 a clean checkout there: 76 tests pass). Airflow runs on the box (`training_pipeline` DAG verified end to end). The `production_monitoring` DAG ran all 13 weeks green (alerts, diagnosis and metrics in `docs/decisions.md` #14);
-Prometheus and the Pushgateway are up. Next: Grafana and the dashboard (step 13).
+Prometheus, the Pushgateway and Grafana with the provisioned dashboard are up (step 13, `docs/decisions.md` #15). Next: calibrate and freeze the detector thresholds (step 14).
