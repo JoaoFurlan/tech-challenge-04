@@ -45,7 +45,7 @@ REPORTS_DIR = DATA_DIR.parent / "reports" / "drift"
 SERVER_URL = os.environ.get("MODEL_SERVER_URL", "http://127.0.0.1:8010")
 PUSHGATEWAY_URL = os.environ.get("PUSHGATEWAY_URL", "http://127.0.0.1:9091")
 CHUNK = 5_000  # well under the server's 10,000-record limit
-COMPARISON_ALIASES = ("baseline", "challenger")  # models scored offline next to the champion, once they exist
+COMPARISON_ALIASES = ("baseline", "previous", "challenger")  # models scored offline next to the champion, once they exist
 
 
 # ---------------------------------------------------------------- small file helpers
@@ -149,11 +149,12 @@ def _load_champion():
 
 def step_drift(week: int) -> int:
     from credit_drift.monitoring.context import analyze, build_context
+    from credit_drift.serving.registry import champion_window_weeks
 
     loaded = _load_champion()
     batch = pd.read_parquet(features_path(week))
     scores = pd.read_parquet(week_dir(week) / "scores.parquet")["probability"].to_numpy()
-    tables, summaries = analyze(build_context(loaded.model), batch, scores, week,
+    tables, summaries = analyze(build_context(loaded.model, champion_window_weeks(loaded.version)), batch, scores, week,
                                 REPORTS_DIR / f"week_{week:02d}_vs_champion_window.html")
     table = tables["champion_window"]
     table.to_parquet(week_dir(week) / "drift_features.parquet", index=False)

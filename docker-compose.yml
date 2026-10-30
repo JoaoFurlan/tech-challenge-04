@@ -27,6 +27,7 @@ x-airflow-common: &airflow-common
     # What the DAG tasks talk to (compose network names)
     MLFLOW_TRACKING_URI: http://mlflow:5000
     MODEL_SERVER_URL: http://serving:8000
+    RELOAD_TOKEN: ${RELOAD_TOKEN:-dev-reload-token}  # lets the retraining DAG tell the server to reload
     PUSHGATEWAY_URL: http://pushgateway:9091
   volumes:
     - ./dags:/opt/airflow/dags

@@ -15,6 +15,7 @@ Scheduled daily from 2026-01-01 to 2026-01-13 with catch-up, one run at a time, 
 * label_performance: labels arrive one week late, so run N finishes week N-1: AUC-PR, Brier, observed vs predicted rate,
   14 slices over two weeks, and any comparison models.
 * evaluate_alerts: alert rules and the week-over-week diagnosis. log_mlflow, push_metrics: MLflow and the Pushgateway.
+* check_retraining: the retraining rule; when it fires, `retraining_pipeline` runs and the loop waits for it.
 
 Pass the `week` parameter to rerun one specific week by hand.
 """
@@ -23,7 +24,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from airflow.providers.standard.operators.bash import BashOperator
+from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.providers.standard.operators.python import BranchPythonOperator
+from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.sdk import DAG, Param
 
 PROJECT = "/opt/credit-drift"
@@ -34,6 +37,16 @@ WEEK = "{{ params.week if params.week else data_interval_start.day }}"
 def choose_path(week: str) -> str:
     gate = json.loads(Path(f"{PROJECT}/artifacts/monitoring/week_{int(week):02d}/gate.json").read_text())
     return "score_batch" if gate["passed"] else "quarantine_batch"
+
+
+def retrain_or_not(week: str) -> str:
+    """The retraining rule (credit_drift.retraining.policy) decides from this week's alerts and the retraining history."""
+    from credit_drift.monitoring.weekly import read_json
+    from credit_drift.retraining.policy import load_state, trigger_for
+
+    number = int(week)
+    alerts = (read_json(Path(f"{PROJECT}/artifacts/monitoring/week_{number:02d}/alerts.json")) or {}).get("alerts", [])
+    return "retrain" if trigger_for(number, alerts, load_state()) else "no_retraining"
 
 
 def step(task_id: str, name: str, **kwargs) -> BashOperator:
@@ -68,8 +81,16 @@ with DAG(
     evaluate_alerts = step("evaluate_alerts", "evaluate", trigger_rule="none_failed_min_one_success")
     log_mlflow = step("log_mlflow", "log")
     push_metrics = step("push_metrics", "push")
+    check_retraining = BranchPythonOperator(task_id="check_retraining", python_callable=retrain_or_not,
+                                            op_kwargs={"week": WEEK})
+    # Wait for the retraining run: the next simulated week must score with whichever model is champion by then.
+    retrain = TriggerDagRunOperator(
+        task_id="retrain", trigger_dag_id="retraining_pipeline", conf={"run_week": WEEK},
+        trigger_run_id=f"retrain_week_{WEEK}", wait_for_completion=True, poke_interval=10,
+        allowed_states=["success"], failed_states=["failed"])
+    no_retraining = EmptyOperator(task_id="no_retraining")
 
     gate >> choose >> [score_batch, quarantine_batch]
     score_batch >> drift_report
     gate >> label_performance
-    [drift_report, quarantine_batch, label_performance] >> evaluate_alerts >> log_mlflow >> push_metrics
+    [drift_report, quarantine_batch, label_performance] >> evaluate_alerts >> log_mlflow >> push_metrics >> check_retraining >> [retrain, no_retraining]

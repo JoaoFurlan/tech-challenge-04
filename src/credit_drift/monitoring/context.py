@@ -9,7 +9,7 @@ from credit_drift.data import TARGET
 from credit_drift.monitoring.features import load_config, monitored_columns
 from credit_drift.monitoring.report import REFERENCE_SAMPLE, build_report
 from credit_drift.monitoring.stats import drift_table, numeric_drift, summarize
-from credit_drift.split import REFERENCE_DIR
+from credit_drift.split import PRODUCTION_DIR, REFERENCE_DIR
 
 
 @dataclass
@@ -24,12 +24,16 @@ class DriftContext:
     report_columns: list[str]
 
 
-def build_context(model) -> DriftContext:
+def build_context(model, window_weeks: list[int] | tuple = ()) -> DriftContext:
     engineer = model.pipeline.named_steps["prep"].named_steps["features"]
     reference = engineer.transform(pd.read_parquet(REFERENCE_DIR / "train.parquet").drop(columns=TARGET))
     kinds = {c: ("categorical" if reference[c].dtype == object else "numeric") for c in reference.columns}
     monitored = [c for c in monitored_columns(load_config()) if c in kinds]
     champion_window = reference  # v1 was trained on the whole Reference train part
+    if window_weeks:  # a retrained champion: equal parts Reference and the production weeks it was trained on
+        production = pd.concat([engineer.transform(pd.read_parquet(
+            PRODUCTION_DIR / "weeks" / f"week_{w:02d}_features.parquet")) for w in window_weeks], ignore_index=True)
+        champion_window = pd.concat([reference.sample(len(production), random_state=0), production], ignore_index=True)
     held_out = pd.read_parquet(REFERENCE_DIR / "test.parquet")
     baseline_scores = pd.Series(model.predict_proba(held_out.drop(columns=TARGET))[:, 1])
     report_baseline = champion_window[monitored].sample(REFERENCE_SAMPLE, random_state=0).reset_index(drop=True)
