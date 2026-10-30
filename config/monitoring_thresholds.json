@@ -1,8 +1,8 @@
 {
- "provisional": "Starting values from docs/decisions.md. Step 14 tunes them offline on two simulations and freezes them.",
- "data": {"psi_moderate": 0.10, "psi_major": 0.25, "moderate_features_for_alert": 2},
+ "status": "frozen: tuned on simulation seeds 101 and 202, validated once on 303 and 404 (docs/decisions.md, #16); change only through a reviewed decision",
+ "data": {"psi_moderate": 0.10, "psi_major": 0.25, "moderate_features_for_alert": 1},
  "score": {"psi": 0.10, "ks": 0.10},
- "performance": {"auc_pr_drop": 0.04, "calibration_gap_relative": 0.20},
+ "performance": {"rule": "window", "window_weeks": 3, "z": 1.645, "auc_pr_drop": 0.0, "calibration_gap_relative": 0.20},
  "slices": {"extra_drop": 0.03},
  "diagnosis": {"feature_ks_rise": 0.045, "feature_js_rise": 0.03, "score_ks_rise": 0.03, "mean_score_move": 0.01}
 }

@@ -10,6 +10,7 @@ from credit_drift.monitoring import alerts, stats, weekly
 from credit_drift.monitoring.performance import (
     overall_metrics,
     pooled_slice_performance,
+    rolling_auc_pr,
     slice_metrics,
 )
 from credit_drift.monitoring.slices import slice_cuts, slice_masks
@@ -105,8 +106,8 @@ def test_a_rejected_batch_raises_one_critical_alert_and_nothing_else():
 
 @pytest.mark.parametrize(("drift", "expected"), [
     (_drift(), []),
-    (_drift(n_psi_moderate=1), []),                                        # one moderate feature is not an alert
-    (_drift(n_psi_moderate=2), ["data_drift_moderate"]),
+    (_drift(n_psi_moderate=0), []),
+    (_drift(n_psi_moderate=1), ["data_drift_moderate"]),                   # one feature past 0.10 is already an alert
     (_drift(n_psi_moderate=3, n_psi_major=1), ["data_drift_major"]),       # major wins over moderate
     (_drift(score_psi=0.12), ["score_drift"]),
     (_drift(score_ks=0.11), ["score_drift"]),
@@ -118,8 +119,8 @@ def test_batch_alert_rules(drift, expected):
 
 def test_performance_alerts_use_the_drop_against_the_champions_baseline():
     baseline = {"overall": {"auc_pr": 0.246}}
-    ok = {"week": 4, "auc_pr": 0.230, "mean_pred": 0.083, "observed_rate": 0.082}
-    bad = {"week": 8, "auc_pr": 0.190, "mean_pred": 0.100, "observed_rate": 0.080}
+    ok = {"week": 4, "auc_pr": 0.230, "mean_pred": 0.083, "observed_rate": 0.082, "trend": {"weeks": [2, 3, 4], "mean": 0.240, "se": 0.01}}
+    bad = {"week": 8, "auc_pr": 0.190, "mean_pred": 0.100, "observed_rate": 0.080, "trend": {"weeks": [6, 7, 8], "mean": 0.200, "se": 0.01}}
     assert alerts.performance_alerts(ok, baseline, [], T) == []
     rules = [a["rule"] for a in alerts.performance_alerts(bad, baseline, ["AGE low"], T)]
     assert rules == ["performance_drop", "calibration_gap", "slice_degradation"]
@@ -197,6 +198,7 @@ def _artifacts(root, week, *, passed=True, ks=0.2, js=0.05, score_ks=0.03, mean_
         base = {"week": week, "model_version": version, "mean_pred": 0.085, "observed_rate": 0.083, "auc_roc": 0.76,
                 "brier": 0.068, "flag_rate": 0.12, "baseline_auc_pr": 0.246, "flagged_slices": [], "slices": {}, **perf}
         base["auc_pr_drop"] = 0.246 - base["auc_pr"]
+        base.setdefault("trend", {"weeks": [week], "mean": base["auc_pr"], "se": 0.02})
         (folder / "performance.json").write_text(json.dumps(base))
 
 
@@ -251,7 +253,7 @@ def test_push_sends_one_group_per_week_and_stage(workspace, monkeypatch):
     (workspace / "week_04" / "performance.json").write_text(json.dumps({
         "week": 4, "model_version": "1", "auc_pr": 0.25, "auc_roc": 0.76, "brier": 0.068, "mean_pred": 0.085,
         "observed_rate": 0.083, "flag_rate": 0.12, "baseline_auc_pr": 0.246, "auc_pr_drop": -0.004,
-        "flagged_slices": [], "slices": {}}))
+        "flagged_slices": [], "slices": {}, "trend": {"weeks": [4], "mean": 0.25, "se": 0.02}}))
     weekly.step_evaluate(5)
     pushed = []
     monkeypatch.setattr("prometheus_client.push_to_gateway",
@@ -267,3 +269,30 @@ def test_json_helper_turns_nan_and_numpy_into_valid_json():
     cleaned = weekly._clean({"a": float("nan"), "b": np.float64(0.5), "c": [np.int64(3), float("inf")]})
     assert cleaned == {"a": None, "b": 0.5, "c": [3, None]}
     json.dumps(cleaned, allow_nan=False)
+
+
+# ---------------------------------------------------------------- the frozen performance rule and its replay
+def test_rolling_auc_pr_averages_weeks_and_shrinks_the_standard_error():
+    weeks = [{"week": w, "auc_pr": v, "auc_pr_ci_low": v - 0.04, "auc_pr_ci_high": v + 0.04}
+             for w, v in ((1, 0.20), (2, 0.22), (3, 0.24))]
+    trend = rolling_auc_pr(weeks)
+    assert trend["weeks"] == [1, 2, 3] and trend["mean"] == pytest.approx(0.22)
+    assert trend["se"] == pytest.approx(0.08 / 3.92 / np.sqrt(3))
+
+
+def test_window_rule_needs_the_fall_to_clear_the_noise_but_the_drop_rule_does_not():
+    baseline = {"overall": {"auc_pr": 0.246}}
+    t = {"performance": {"rule": "window", "z": 1.645, "auc_pr_drop": 0.0}}
+    clear = {"auc_pr": 0.20, "trend": {"mean": 0.20, "se": 0.01}}
+    noisy = {"auc_pr": 0.20, "trend": {"mean": 0.20, "se": 0.04}}  # same point estimate, much more uncertainty
+    assert alerts.performance_dropped(clear, baseline, t) and not alerts.performance_dropped(noisy, baseline, t)
+    assert alerts.performance_dropped(noisy, baseline, {"performance": {"auc_pr_drop": 0.04}})
+
+
+@pytest.mark.parametrize("seed", [303, 404])
+def test_frozen_thresholds_on_the_validation_seeds_raise_no_false_alarms_and_diagnose_most_weeks(seed):
+    from credit_drift.monitoring import calibration, replay
+
+    card = replay.scorecard(replay.replay(calibration.load(seed), T))
+    assert not card["control_false_alarms"] and not card["performance_false_alarms"]
+    assert int(card["diagnosis_correct"].split("/")[0]) >= 12

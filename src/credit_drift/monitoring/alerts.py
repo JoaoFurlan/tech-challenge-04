@@ -46,15 +46,31 @@ def batch_alerts(week: int, gate: dict, drift: dict | None, t: dict) -> list[dic
     return out
 
 
+def performance_dropped(perf: dict, baseline: dict, t: dict) -> bool:
+    """Did the champion's AUC-PR fall for real? One definition, shared by the alert and the diagnosis.
+
+    rule "drop": this week's AUC-PR is at least `auc_pr_drop` below the baseline.
+    rule "window": the mean AUC-PR of the last `window_weeks` labelled weeks, plus `z` standard errors, is still below
+    the baseline minus `auc_pr_drop`: the fall is larger than sampling noise, which a single week of ~400 defaulters
+    cannot promise (docs/decisions.md, #16)."""
+    settings, base = t["performance"], baseline["overall"]["auc_pr"]
+    if settings.get("rule", "drop") == "window":
+        trend = perf["trend"]
+        return bool(trend["mean"] + settings["z"] * trend["se"] < base - settings["auc_pr_drop"])
+    return bool(base - perf["auc_pr"] >= settings["auc_pr_drop"])
+
+
 def performance_alerts(perf: dict, baseline: dict, flagged_slices: list[str], t: dict) -> list[dict]:
     """Alerts that need labels; they describe the week whose labels just arrived."""
     week = perf["week"]
     out = []
     drop = baseline["overall"]["auc_pr"] - perf["auc_pr"]
-    if drop >= t["performance"]["auc_pr_drop"]:
+    if performance_dropped(perf, baseline, t):
         out.append(_alert("performance_drop", "high", week,
                           f"AUC-PR {perf['auc_pr']:.3f} is {drop:.3f} below the champion's baseline "
-                          f"{baseline['overall']['auc_pr']:.3f}"))
+                          f"{baseline['overall']['auc_pr']:.3f}" + (
+                              f" (last {len(perf['trend']['weeks'])} weeks: {perf['trend']['mean']:.3f})"
+                              if t["performance"].get("rule") == "window" else "")))
     gap = abs(perf["mean_pred"] - perf["observed_rate"]) / max(perf["observed_rate"], 1e-9)
     if gap >= t["performance"]["calibration_gap_relative"]:
         out.append(_alert("calibration_gap", "medium", week,
@@ -78,7 +94,8 @@ def flagged_slices(current: dict, baseline: dict, overall_drop: float, t: dict) 
         if base is None or pd.isna(now["auc_pr"]) or pd.isna(base):
             continue
         ci_high = now.get("ci_high")
-        clearly_below = ci_high is None or pd.isna(ci_high) or ci_high < base - margin
+        clearly_below = (not t["slices"].get("require_ci", True) or ci_high is None or pd.isna(ci_high)
+                         or ci_high < base - margin)
         if (base - now["auc_pr"]) >= margin + t["slices"]["extra_drop"] and clearly_below:
             flagged.append(name)
     return flagged

@@ -34,6 +34,17 @@ def overall_metrics(y: np.ndarray, p: np.ndarray, threshold: float, seed: int = 
     }
 
 
+def rolling_auc_pr(history: list[dict]) -> dict:
+    """AUC-PR over the last labelled weeks: the mean of the weekly values and its standard error.
+
+    One week holds ~400 defaulters, so a week's AUC-PR wobbles by about +-0.04; averaging a few weeks shrinks that.
+    The standard error of each week comes from its bootstrap interval (width / 3.92); weeks are independent samples."""
+    values = [h["auc_pr"] for h in history]
+    ses = [(h["auc_pr_ci_high"] - h["auc_pr_ci_low"]) / 3.92 for h in history]
+    return {"weeks": [h["week"] for h in history], "mean": float(np.mean(values)),
+            "se": float(np.sqrt(np.sum(np.square(ses))) / len(values))}
+
+
 def slice_metrics(y: np.ndarray, p: np.ndarray, masks: dict[str, np.ndarray], seed: int = 0) -> dict[str, dict]:
     """AUC-PR per slice with a bootstrap interval; NaN when the slice has too few defaulters."""
     rng = np.random.default_rng(seed)

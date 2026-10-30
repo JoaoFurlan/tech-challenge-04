@@ -36,6 +36,7 @@ from credit_drift.monitoring.performance import (
     compute_baseline,
     overall_metrics,
     pooled_slice_performance,
+    rolling_auc_pr,
 )
 from credit_drift.split import DATA_DIR, PRODUCTION_DIR, REFERENCE_DIR
 
@@ -235,6 +236,14 @@ def step_performance(week: int) -> int:
     overall_drop = baseline["overall"]["auc_pr"] - pooled["auc_pr"]
     flagged = alert_rules.flagged_slices(slices, baseline["slices"], overall_drop, t)
 
+    history = [{"week": prev, **metrics}]
+    for earlier_week in range(prev - 1, 0, -1):  # the last labelled weeks; a blocked week has no performance file
+        if len(history) >= t["performance"].get("window_weeks", 1):
+            break
+        if earlier := read_json(week_dir(earlier_week) / "performance.json"):
+            history.insert(0, {"week": earlier_week, **earlier})
+    trend = rolling_auc_pr(history)
+
     comparison = []
     for alias, version in comparison_models():
         import mlflow
@@ -248,7 +257,7 @@ def step_performance(week: int) -> int:
         "week": prev, "computed_in_run": week, "model_version": loaded.version, **metrics,
         "baseline_auc_pr": baseline["overall"]["auc_pr"], "auc_pr_drop": baseline["overall"]["auc_pr"] - metrics["auc_pr"],
         "slice_window_weeks": window, "slice_window_overall": pooled, "slice_overall_drop": overall_drop,
-        "slices": slices, "flagged_slices": flagged, "comparison": comparison})
+        "slices": slices, "flagged_slices": flagged, "trend": trend, "comparison": comparison})
     note.update(available=True)
     write_json(week_dir(week) / "labels_backfill.json", note)
     print(f"week {week:02d}: backfilled week {prev:02d} | AUC-PR {metrics['auc_pr']:.3f} "
@@ -281,7 +290,7 @@ def _diagnose_week(week: int, t: dict, baseline: dict | None) -> dict | None:
     prev_drift = read_json(week_dir(week - 1) / "drift.json") if week > 1 else None
     features = alert_rules.features_changed(_drift_table(week - 1) if week > 1 else None, table, t)
     score = alert_rules.score_changed(prev_drift, drift, t)
-    dropped = (baseline["overall"]["auc_pr"] - perf["auc_pr"]) >= t["performance"]["auc_pr_drop"]
+    dropped = alert_rules.performance_dropped(perf, baseline, t)
     gap = abs(perf["mean_pred"] - perf["observed_rate"]) / max(perf["observed_rate"], 1e-9)
     off = gap >= t["performance"]["calibration_gap_relative"]
     cause = alert_rules.diagnose(blocked=False, features_changed=features, score_changed=score,
