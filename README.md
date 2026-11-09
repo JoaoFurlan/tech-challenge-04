@@ -321,10 +321,24 @@ perturbação de ±2% com semente fixa para que o PSI não oscile conforme o val
 Os relatórios HTML do **Evidently** (PSI, KS e qui-quadrado, 32 variáveis escolhidas por uma regra sobre a
 Referência, mais o score) das semanas 1, 5 e 8 estão em `docs/reports/drift/`.
 
-O alerta "drift no conjunto de dados" do Evidently só dispara quando 50% das colunas mudam, o que nunca
-acontece com 3 de 32 variáveis; por isso, no teste de PSI ele segue a nossa regra (2 ou mais variáveis com
-PSI ≥ 0,10) e, no teste de KS/qui-quadrado, mantém o padrão de 50% de propósito: os p-valores marcam 4 de 32
-colunas até na semana de controle e 14 de 32 nas semanas 5 e 8, e por isso servem de evidência, não de alerta.
+**Por que cada relatório tem dois quadros "Dataset Drift", com números diferentes.** São dois testes sobre as mesmas
+33 colunas (32 variáveis mais o score), e cada um tem a sua régua; o relatório traz uma caixa "Como ler" no topo com
+a mesma explicação.
+
+| | Primeiro quadro: **PSI** | Segundo quadro: **KS e qui-quadrado** |
+|---|---|---|
+| O que mede | o **tamanho** da mudança: divide a variável em 10 faixas de mesma frequência na base e compara a fração de linhas em cada faixa, PSI = soma de (atual − base) × ln(atual ÷ base) | se a diferença **existe**: o KS é a maior distância vertical entre as curvas acumuladas (numéricas); o qui-quadrado compara contagens por categoria (categóricas); ambos dão um p-valor |
+| Coluna "drifted" quando | PSI ≥ 0,10 | p-valor < 0,05 |
+| O quadro acusa drift quando | **pelo menos 1** coluna passa (a nossa regra de alerta) | **metade** das colunas passa (padrão do Evidently) |
+| Semana 1 (controle) | 0 de 33 | 4 de 33, por acaso |
+| Semanas 5 e 8 | 3 de 33 | 15 de 33 (45%, ainda abaixo de 50%) |
+
+O PSI é o sinal de alerta porque mede o tamanho da mudança e não cresce só pelo tamanho da amostra. O KS e o
+qui-quadrado só respondem "a diferença é estatisticamente detectável?": com milhares de linhas qualquer diferença
+minúscula tem p < 0,05, e com 33 colunas algumas são marcadas por acaso até na semana limpa. Por isso servem de segunda
+opinião e de evidência, não de alerta. O Evidently, por padrão, só acusa drift no conjunto quando 50% das colunas
+mudam, o que nunca acontece com 3 de 33 variáveis; por isso, no quadro do PSI o limite foi ajustado para 1 coluna,
+igual à regra de alerta do projeto, e no quadro do KS e qui-quadrado o padrão de 50% foi mantido de propósito.
 
 | Semanas | Variáveis monitoradas com PSI ≥ 0,10 | Leitura |
 |---|---|---|
