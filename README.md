@@ -29,22 +29,7 @@ uv run python -m credit_drift.contracts.demo                                    
 
 A pilha completa (MLflow, Airflow, Prometheus, Grafana) sobe com `docker compose`; veja [Reprodução completa](#reprodução-completa-e-operação).
 
-### Mapa pela rubrica do Tech Challenge
-
-| Critério (peso) | Onde está |
-|---|---|
-| **Validação de dados** (25%) | [Contrato de dados](#contrato-de-dados): Pandera na entrada e Great Expectations com Data Docs (`docs/reports/data_docs/index.html`); lote corrompido bloqueado (`uv run python -m credit_drift.contracts.demo`) e bloqueio no laço de produção (semana 9) |
-| **Detecção de drift** (25%) | [Dados e simulação](#dados-e-a-simulação-de-drift) (cronograma e verdade em `docs/reports/drift_spec.json`), [Data drift e PSI](#data-drift-e-psi) (PSI, KS, qui-quadrado, JS com Evidently, relatórios HTML em `docs/reports/drift/`), [Concept drift e desempenho](#concept-drift-e-desempenho) e a calibração dos limiares |
-| **Observabilidade e logs** (20%) | [Monitoramento semanal e painel](#monitoramento-semanal-e-painel-grafana), [Métricas de saúde operacionais](#métricas-de-saúde-operacionais), experimentos e registro no MLflow, DAGs no Airflow |
-| **Governança (LGPD)** (15%) | [Governança e LGPD](#governança-e-lgpd) (dados pessoais, base legal, retenção, viés) e [Causalidade](#causalidade) |
-
-Requisitos obrigatórios do desafio: pipeline de validação (contratos), scripts de simulação e detecção estatística de drift,
-dashboards e relatórios HTML, governança consolidada neste README e histórico de commits semânticos. Boas práticas: Referência
-e Produção separadas em arquivos distintos; mais de três regras rígidas de qualidade (idade 18–100, renda não nula e positiva,
-sem IDs duplicados, esquema e tipos, valores positivos); relatório estatístico de mudança de distribuição (PSI e KS); plano de
-privacidade.
-
-**Índice.** Parte 1, a situação: [O problema](#o-problema-e-como-medimos) · [Glossário](#glossário-o-termo-técnico-em-palavras-simples-com-exemplo-e-número).
+**Índice.** Parte 1, a situação: [O problema](#o-problema-e-como-medimos) · [Glossário](#glossário-termo-técnico-definição-exemplo-e-resultado).
 Parte 2, a ação: [Arquitetura](#arquitetura) · [Estrutura do repositório](#estrutura-do-repositório) · [Dados e simulação](#dados-e-a-simulação-de-drift) · [Modelo campeão](#modelo-campeão).
 Parte 3, os resultados: [Contrato](#contrato-de-dados) · [Data drift](#data-drift-e-psi) · [Concept drift](#concept-drift-e-desempenho) · [Causalidade](#causalidade) · [Painel](#monitoramento-semanal-e-painel-grafana) · [Retreino](#retreino-e-recalibração) · [Governança](#governança-e-lgpd).
 Parte 4, os impactos: [Conclusão](#conclusão-o-que-propusemos-e-o-que-encontramos) · [Decisões](#decisões-de-projeto) · [Trabalho futuro](#trabalho-futuro).
@@ -76,11 +61,11 @@ detectado custa 5 vezes mais que um alarme falso (C_FN = 5 × C_FP), o que dá `
 instituição real substituiria pelos seus números. O AUC-PR é usado em vez da acurácia porque só cerca de 8% dos clientes não
 pagam.
 
-## Glossário: o termo técnico, em palavras simples, com exemplo e número
+## Glossário: termo técnico, definição, exemplo e resultado
 
-Cada termo abaixo segue a mesma ordem: o nome técnico, o que é em linguagem simples, um exemplo e o que ele mostrou neste projeto.
+Cada termo abaixo segue a mesma ordem: o nome técnico, a definição, um exemplo e o que ele mostrou neste projeto.
 
-| Termo técnico | Em palavras simples | Exemplo | No nosso projeto (número e impacto) |
+| Termo técnico | Definição | Exemplo | No nosso projeto (número e impacto) |
 |---|---|---|---|
 | **Model drift** (degradação silenciosa) | o modelo continua dando notas, mas elas ficam piores, e ninguém é avisado | uma renda de R$ 5 mil passa a valer menos com a inflação | o AUC-PR cai de 0,246 para cerca de 0,19 nas semanas de concept drift |
 | **Data drift** (covariate shift) | os clientes que chegam são diferentes dos de treino | a renda média cai de R$ 167 mil para R$ 145 mil | PSI da renda de 0,00 para 0,16 na semana 5; nessa fase o desempenho não caiu (0,261 observado contra 0,262 esperado só pelas entradas) |
@@ -106,23 +91,11 @@ Cada termo abaixo segue a mesma ordem: o nome técnico, o que é em linguagem si
 
 <img src="docs/img/slide_arquitetura.png" alt="Arquitetura: como tudo se conecta. Dados (DVC), Airflow, servidor, Prometheus, Relatórios, Contrato, MLflow e Grafana" width="860">
 
-Azul: armazenamento; preto: execução; laranja: observabilidade. As setas mostram quem chama quem. O Airflow orquestra três fluxos (treino, monitoramento semanal e retreino); cada caixa pode rodar em qualquer lugar. As
-métricas seguem dois padrões de coleta, de propósito: o **push** (tarefas em lote do Airflow enviam ao Pushgateway, que o
-Prometheus lê) e o **pull** (o Prometheus lê o `/metrics` do servidor, que é um serviço de longa duração).
-
-| Componente | Para quê | Onde ver (pelo túnel SSH) |
-|---|---|---|
-| Airflow 3 | orquestra os três DAGs; as tarefas só chamam `python -m credit_drift...` | `http://localhost:8080` |
-| MLflow + Postgres | experimentos, registro de modelos, linhagem (hash do conjunto de dados) | `http://localhost:5000` |
-| Servidor do modelo (FastAPI) | serve o `credit_scoring@champion`; é chamado pelo DAG por HTTP | `http://localhost:8010` |
-| Pushgateway e Prometheus | recebem e guardam as métricas | `http://localhost:9090` |
-| Grafana | painel de toda a história de 16 semanas, provisionado como código | `http://localhost:3000` |
-| DVC (remoto S3) | versiona os dados brutos, a Referência e as 16 semanas | `dvc status`, `dvc pull` |
-
-Num ambiente real, a mesma cadeia existe, mas cada etapa é mais robusta: ingestão com contrato e data lake com acesso por perfil,
-treino em computação elástica, registro com aprovação humana e model card, vários servidores com canário, monitoramento com
-rótulos que levam meses, plantão com runbook e fallback para lotes bloqueados. Neste projeto, cada caixa é mais simples: um
-servidor, um portão automático e rótulos em 1 semana.
+**Em ambiente real.** A mesma cadeia se mantém, com cada etapa reforçada: ingestão com contrato de dados e data lake com
+acesso por perfil e criptografia; treino em computação elástica e agendada; registro de modelos com aprovação humana e model
+card; serviço com vários servidores e implantação em canário; monitoramento preparado para rótulos que levam meses; alertas
+encaminhados a um plantão com runbook; e fallback para lotes bloqueados (segurar as decisões ou revisão manual). Neste projeto,
+cada etapa é uma versão enxuta: um servidor, um portão de promoção automático e rótulos com uma semana de atraso.
 
 ## Estrutura do repositório
 
@@ -169,8 +142,8 @@ Gerados e fora do git: `artifacts/` (saídas de treino), `reports/` (conjunto co
 
 ## Dados e a simulação de drift
 
-**Em palavras simples:** como não há uma fintech de verdade, criamos 16 "semanas" de clientes em que mexemos de propósito em
-renda, parcela e na relação com o risco, sabendo exatamente o que foi alterado. **Exemplo:** na semana 5 a parcela sobe 15%.
+**Resumo:** criamos 16 "semanas" de clientes, alterando de propósito a renda, a parcela e a relação com o risco, com o registro
+exato do que foi alterado. **Exemplo:** na semana 5 a parcela sobe 15%.
 **Impacto:** o PSI da razão parcela/crédito vai de 0,00 para 0,80, mas o desempenho não cai; só o concept drift (semana 8 em
 diante) derruba o AUC-PR, de 0,246 para cerca de 0,19.
 
@@ -196,7 +169,7 @@ Cada semana gera um arquivo de *features* e outro de *rótulos* (em produção o
 registra o que foi injetado: é o gabarito usado **apenas offline** (`docs/reports/drift_spec.json`). Cada semana tem sua própria
 semente (base + semana) e um estado absoluto do mundo, não acumulado, então adicionar uma semana nunca muda as anteriores.
 
-O que isso faz com o modelo campeão (resultado medido, não suposto):
+O efeito sobre o modelo campeão:
 
 - O drift de covariáveis mexe nas distribuições e na probabilidade média prevista (de 8,2% na semana 1 para
   9,0% na semana 5, e a inadimplência observada acompanha: de 8,5% para 8,8%, então não há descalibração), mas quase não muda o AUC-PR
@@ -248,11 +221,11 @@ inadimplentes, com 26% de precisão. O desempenho é moderado de propósito, pel
 Cada seção segue o mesmo caminho: o que é, o que fizemos, o resultado, o impacto e onde ver. Os gráficos do Grafana são
 capturas do painel provisionado (`docker/grafana/`), depois da execução de referência das 16 semanas.
 
-<img src="docs/img/grafana_overview.jpg" alt="Painel do Grafana: indicadores e o ato 1" width="720">
+<img src="docs/img/grafana_overview.png" alt="Painel do Grafana: indicadores e o ato 1" width="860">
 
 ## Contrato de dados
 
-**Em palavras simples:** um contrato de dados são regras que o lote precisa cumprir antes de entrar; se uma regra de bloqueio
+**Resumo:** um contrato de dados são regras que o lote precisa cumprir antes de entrar; se uma regra de bloqueio
 quebra, o lote inteiro é barrado. **Exemplo:** idade fora de 18 a 100 anos. **Impacto:** o lote corrompido da semana 9 (12% de
 rendas nulas, idades menores que 18, IDs repetidos) foi barrado por Pandera e Great Expectations e nunca chegou ao modelo.
 
@@ -275,7 +248,7 @@ regra (LGPD).
 IDs duplicados e uma coluna numérica como texto) é rejeitado pelos dois validadores, vai para a quarentena, dispara um alerta
 crítico e o modelo nunca o vê. Sem o contrato, 12% das notas seriam calculadas sem renda.
 
-<img src="docs/img/grafana_contract_outcome.jpg" alt="Grafana: resultado do contrato por semana, com o pico de lote bloqueado na semana 9" width="560">
+<img src="docs/img/grafana_contract_outcome.png" alt="Grafana: resultado do contrato por semana, com o pico de lote bloqueado na semana 9" width="560">
 
 ```bash
 uv run python -m credit_drift.contracts.demo
@@ -287,7 +260,7 @@ pontuar só as linhas válidas); aqui ele só é barrado.
 
 ## Data drift e PSI
 
-**Em palavras simples:** a cada semana comparamos cada variável com a base de treino do campeão: o PSI diz o quanto mudou, o KS
+**Resumo:** a cada semana comparamos cada variável com a base de treino do campeão: o PSI diz o quanto mudou, o KS
 dá a distância entre as distribuições e o Evidently gera o relatório. **Exemplo:** a renda média caiu de R$ 167 mil para
 R$ 145 mil e o PSI da renda foi para 0,16. **Impacto:** isso mostra quais variáveis mudaram e dispara o alerta, mas não diz se o
 modelo piorou.
@@ -308,12 +281,11 @@ não oscile conforme o valor cai na borda de uma faixa.
 
 **Resultado.**
 
-<table>
-<tr>
-<td><img src="docs/img/grafana_psi_severity.jpg" alt="Grafana: PSI da variável mais deslocada e média das variáveis monitoradas, por semana" width="430"></td>
-<td><img src="docs/img/grafana_psi_heatmap.jpg" alt="Grafana: mapa de calor do PSI por variável e semana" width="430"></td>
-</tr>
-</table>
+<img src="docs/img/grafana_psi_severity.png" alt="Grafana: PSI da variável mais deslocada e média das variáveis monitoradas, por semana" width="560">
+
+<img src="docs/img/grafana_psi_heatmap.png" alt="Grafana: mapa de calor do PSI por variável e semana" width="700">
+
+O painel ordena as variáveis pelo PSI; a captura mostra as 16 primeiras das 32 monitoradas.
 
 | Semanas | Variáveis monitoradas com PSI ≥ 0,10 | Leitura |
 |---|---|---|
@@ -353,7 +325,7 @@ ficou igual ao esperado só pelas entradas (0,262).
 
 ## Concept drift e desempenho
 
-**Em palavras simples:** os clientes parecem os mesmos, mas o que cada perfil significa para o risco mudou: uma regra que o
+**Resumo:** os clientes parecem os mesmos, mas o que cada perfil significa para o risco mudou: uma regra que o
 modelo aprendeu, como "score externo alto é seguro", deixa de valer para um grupo. **Exemplo ilustrativo:** antes, score alto =
 4% de inadimplência e score baixo = 15%; depois, nesse grupo, os dois ficam perto de 8%. **Impacto:** o PSI e o KS não registram
 nada a mais; só o AUC-PR mostra, e só quando os rótulos chegam, uma semana depois.
@@ -364,8 +336,8 @@ semanal. À direita, a calibração, ao contrário, aguenta: a taxa prevista aco
 
 <table>
 <tr>
-<td><img src="docs/img/grafana_auc_pr.jpg" alt="Grafana: AUC-PR do campeão por semana, contra a base de 0,246" width="430"></td>
-<td><img src="docs/img/grafana_pred_vs_observed.jpg" alt="Grafana: taxa de inadimplência prevista e observada por semana" width="430"></td>
+<td><img src="docs/img/grafana_auc_pr.png" alt="Grafana: AUC-PR do campeão por semana, contra a base de 0,246" width="440"></td>
+<td><img src="docs/img/grafana_pred_vs_observed.png" alt="Grafana: taxa de inadimplência prevista e observada por semana" width="440"></td>
 </tr>
 </table>
 
@@ -374,7 +346,7 @@ campeão; as fatias de idade baixa, renda baixa e `EXT_SOURCE_2` baixo (as vari�
 piores a partir da semana 8, e `EXT_SOURCE_2` alto fica no verde. As fatias usam janelas de duas semanas porque uma semana
 sozinha é ruidosa.
 
-<img src="docs/img/grafana_slices.jpg" alt="Grafana: queda de AUC-PR por fatia e semana" width="760">
+<img src="docs/img/grafana_slices.png" alt="Grafana: queda de AUC-PR por fatia e semana" width="860">
 
 ### Calibração dos limiares
 
@@ -389,14 +361,14 @@ equivalente seria o histórico de incidentes.
 
 ## Causalidade
 
-**Em palavras simples:** queremos saber se a queda de desempenho veio de os clientes terem mudado ou de o risco ter mudado.
+**Resumo:** queremos saber se a queda de desempenho veio de os clientes terem mudado ou de o risco ter mudado.
 **Exemplo:** perguntamos "se os clientes de hoje tivessem o comportamento de ontem, qual seria a nota?". **Impacto:** esperado
 0,262, observado 0,192, então 0,070 não vêm das entradas: é concept drift.
 
 A pergunta da diretoria é "o que causou a degradação?". Com um simulador, temos a verdade do que foi injetado
 (`drift_spec.json`), então dá para comparar causa injetada, causa atribuída pelos detectores e causa estimada por contrafactual.
-A verdade só é usada **offline** (`notebooks/04_drift_evaluation.ipynb`, HTML em `docs/reports/`); em produção ela não existe, e
-o equivalente seria histórico de incidentes.
+A verdade só é usada **offline** (`notebooks/04_drift_evaluation.ipynb`, HTML em `docs/reports/`); em produção, o equivalente seria o
+histórico de incidentes.
 
 **1. Contrafactual por reponderação de importância** (`src/credit_drift/monitoring/causal.py`, dados em
 `docs/calibration/counterfactual.json`). Reponderamos a Referência, com uma regressão logística que distingue treino de
@@ -435,7 +407,7 @@ também depende da taxa de inadimplência), mas não separamos os dois efeitos.
 
 Precisão de 100% (nenhum falso positivo em 16 semanas) e **recall de ≈ 0,38**: dos oito sinais injetados ou derivados (quatro
 diretos e quatro derivados), o PSI nomeia três: a razão parcela/crédito, a razão parcela/renda e a renda. O tempo de emprego (PSI ≈
-0,05) e a mistura de tipos de renda (≈ 0,03) mudaram de verdade, mas ficam abaixo da faixa de 0,10. O diagnóstico semana a semana
+0,05) e a mistura de tipos de renda (≈ 0,03) mudaram de fato, mas ficam abaixo da faixa de 0,10. O diagnóstico semana a semana
 acerta 14 das 15 semanas avaliáveis.
 
 **3. O que ajudou.** Recalibrar não muda o AUC-PR; reajustar o modelo ajuda só depois de várias semanas rotuladas do regime novo
@@ -462,8 +434,8 @@ decisão #17):
 
 <table>
 <tr>
-<td><img src="docs/img/grafana_diagnosis.jpg" alt="Grafana: causa diagnosticada por semana" width="360"></td>
-<td><img src="docs/img/grafana_alerts.jpg" alt="Grafana: alertas disparados" width="500"></td>
+<td><img src="docs/img/grafana_diagnosis.png" alt="Grafana: causa diagnosticada por semana" width="280"></td>
+<td><img src="docs/img/grafana_alerts.png" alt="Grafana: alertas disparados" width="510"></td>
 </tr>
 </table>
 
@@ -545,7 +517,7 @@ verificado de ponta a ponta no servidor: execução completa em cerca de 2,3 min
 
 ## Retreino e recalibração
 
-**Em palavras simples:** quando o modelo piora, dá para recalibrar o atual ou treinar um novo, mas só trocamos o campeão se um
+**Resumo:** quando o modelo piora, dá para recalibrar o atual ou treinar um novo, mas só trocamos o campeão se um
 teste estatístico (o portão) provar que o novo é melhor. **Exemplo:** o candidato novo tem de reduzir o custo (perder um mau
 pagador custa 5 vezes mais que barrar um bom) com 95% de confiança. **Impacto:** em três tentativas o portão recusou todos os
 candidatos, embora, em semanas novas, o melhor ganhe +0,011 de AUC-PR. É uma **extensão** do projeto: o enunciado não exige
@@ -669,14 +641,14 @@ treinados deixam de conter o dado depois do próximo retreino (*). A revisão de
 
 ### Mitigação de vieses
 
-**Em palavras simples:** viés aqui é o modelo errar mais para um grupo do que para outro, mesmo sem usar a característica.
+**Resumo:** viés aqui é o modelo errar mais para um grupo do que para outro, mesmo sem usar a característica.
 **Exemplo:** de 100 clientes que pagariam, 13 homens e 8 mulheres são barrados; de 18 a 29 anos, 20 são barrados, contra 2 com 60
 anos ou mais. **Impacto:** risco de discriminação indireta (LGPD, art. 6º, IX), que excluir o gênero do modelo não elimina.
 
 **As métricas usadas** (todas por grupo, no limiar de decisão de 1/6, na parte de teste da Referência, não em produção,
 calculadas por `credit_drift.monitoring.fairness` e guardadas em `docs/calibration/fairness.json`):
 
-| Métrica (nome técnico) | Em palavras simples | O que mostra |
+| Métrica (nome técnico) | Definição | O que mostra |
 |---|---|---|
 | **Calibração por grupo** | a probabilidade prevista bate com a taxa observada em cada grupo | se o modelo é igualmente confiável para todos |
 | **Taxa de sinalização** (paridade demográfica) | de cada 100 do grupo, quantos o modelo barra | se um grupo é barrado mais que outro |
@@ -743,7 +715,7 @@ degradação, entender a causa, tentar remediá-la e avaliar governança e viés
 5. **Governança e viés:** privacidade e rastreio no código; retenção, base legal e revisão humana estão descritas; erros desiguais
    por grupo: de 100 clientes de 18 a 29 anos que pagariam, 20 são barrados, contra 2 com 60 anos ou mais.
 
-**Limites.** Dados simulados por um único simulador; a causa foi validada contra o simulador, que não existe em produção; prazos e
+**Limites.** Dados simulados por um único simulador; a causa foi validada contra o simulador (em produção, ela teria de ser investigada com dados de negócio); prazos e
 bases legais pedem validação jurídica; o lote bloqueado ainda não tem plano de contingência; as quatro sementes de calibração
 vêm do mesmo simulador.
 
