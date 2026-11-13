@@ -164,7 +164,7 @@ variáveis passam do limite, duas fortes: parcela/crédito (0,80–0,94) e parce
 detectores de distribuição, e nessa fase o AUC-PR observado (0,261) ficou igual ao esperado só pelas entradas (0,262): o PSI diz
 o que mudou, não se o modelo piorou.
 
-**Relatórios Evidently** (semanas 1, 5 e 8 em `docs/reports/drift/`). Cada um tem dois quadros "Dataset Drift" sobre as mesmas 33
+**Relatórios Evidently** (semanas 1, 3, 5, 8, 11 e 14 em `docs/reports/drift/`). Cada um tem dois quadros "Dataset Drift" sobre as mesmas 33
 colunas (32 variáveis e o score), com réguas diferentes, explicadas numa caixa no topo do relatório:
 
 | | Quadro 1: **PSI** | Quadro 2: **KS e qui-quadrado** |
