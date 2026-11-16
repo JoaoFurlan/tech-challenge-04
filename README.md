@@ -3,6 +3,8 @@
 Camada de sustentação e confiabilidade (contratos de dados, detecção de drift, observabilidade e governança LGPD) em torno de
 um modelo de credit scoring. Projeto do Tech Challenge, Fase 4 (Pos Tech, Machine Learning Engineering).
 
+**Vídeo (método STAR):** https://youtu.be/o1gDOgwmD2k
+
 ## Resumo (STAR)
 
 - **Situação.** Um modelo de crédito em produção pode perder qualidade sem dar erro, depois de mudanças econômicas ou de perfil

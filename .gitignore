@@ -29,3 +29,6 @@ mlartifacts/
 
 # files that carry commits to the Linux box
 *.bundle
+
+# screen recordings (video is on YouTube)
+/Gravando*.mp4
